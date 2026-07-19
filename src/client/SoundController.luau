@@ -159,9 +159,13 @@ function SoundController.Start(reactionRemote)
 	for name, config in GameConfig.sounds do
 		SoundController._sounds[name] = createSound(name, config)
 	end
+	local backgroundMusic = SoundController._sounds.backgroundMusic
+	backgroundMusic.Looped = true
+	backgroundMusic:Play()
 	task.spawn(function()
 		pcall(function()
 			ContentProvider:PreloadAsync({
+				backgroundMusic,
 				SoundController._sounds.onFireEnter,
 				SoundController._sounds.onFireLoop,
 			})

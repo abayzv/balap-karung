@@ -18,6 +18,7 @@ function LobbyTimerController.Start()
 	local locationTile = timerGui:WaitForChild("Frame"):WaitForChild("LocationTile")
 	local title = locationTile:WaitForChild("Title")
 	local countdownLabel = locationTile:WaitForChild("Bottom"):WaitForChild("Countdown")
+	local localPlayer = Players.LocalPlayer
 
 	local function render()
 		local state = Workspace:GetAttribute("RaceState") or "Waiting"
@@ -25,6 +26,7 @@ function LobbyTimerController.Start()
 		local activeTrackName = Workspace:GetAttribute("ActiveTrackName") or ""
 
 		local timerVisible = state == "Intermission"
+			and localPlayer:GetAttribute("InStartArea") == true
 		timerGui.Enabled = timerVisible
 		if not timerVisible then
 			return
@@ -39,6 +41,7 @@ function LobbyTimerController.Start()
 	Workspace:GetAttributeChangedSignal("RaceState"):Connect(render)
 	Workspace:GetAttributeChangedSignal("Countdown"):Connect(render)
 	Workspace:GetAttributeChangedSignal("ActiveTrackName"):Connect(render)
+	localPlayer:GetAttributeChangedSignal("InStartArea"):Connect(render)
 	render()
 end
 

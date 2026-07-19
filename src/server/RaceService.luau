@@ -1,3 +1,4 @@
+local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local PhysicsService = game:GetService("PhysicsService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -37,12 +38,53 @@ local function setPlayerDefaults(player)
 	player:SetAttribute("BoostEndsAt", 0)
 	player:SetAttribute("IsRecovering", false)
 	player:SetAttribute("DistanceRemaining", GameConfig.race.trackLengthStuds)
+	player:SetAttribute("RaceProgress", 0)
 	player:SetAttribute("RaceStatus", "Waiting")
 	player:SetAttribute("FinishTime", 0)
 	player:SetAttribute("Rank", 0)
 	player:SetAttribute("LaneIndex", 0)
 	player:SetAttribute("LastVerdict", "")
 	player:SetAttribute("IsRace", false)
+	player:SetAttribute("InStartArea", false)
+end
+
+local function isPointInsidePart(part, point)
+	local localPoint = part.CFrame:PointToObjectSpace(point)
+	local halfSize = part.Size / 2
+	return math.abs(localPoint.X) <= halfSize.X
+		and math.abs(localPoint.Y) <= halfSize.Y
+		and math.abs(localPoint.Z) <= halfSize.Z
+end
+
+local function getPlayersInStartArea()
+	local startParts = {}
+	for _, instance in CollectionService:GetTagged(GameConfig.queue.startPartTag) do
+		if instance:IsA("BasePart") and instance:IsDescendantOf(Workspace) then
+			table.insert(startParts, instance)
+		end
+	end
+
+	local queuedPlayers = {}
+	for _, player in Players:GetPlayers() do
+		local character = player.Character
+		local root = character and character:FindFirstChild("HumanoidRootPart")
+		local isInside = false
+		if root then
+			for _, startPart in startParts do
+				if isPointInsidePart(startPart, root.Position) then
+					isInside = true
+					break
+				end
+			end
+		end
+		player:SetAttribute("InStartArea", isInside)
+		if isInside then
+			table.insert(queuedPlayers, player)
+		end
+	end
+
+	Workspace:SetAttribute("PlayersInStartArea", #queuedPlayers)
+	return queuedPlayers
 end
 
 local function updateJumpState(player, character)
@@ -216,7 +258,7 @@ function RaceService:_getCharacter(player)
 	return character
 end
 
-function RaceService:_prepareRace()
+function RaceService:_prepareRace(eligiblePlayers)
 	local activeTrack = self._activeTrack
 	if not activeTrack or not activeTrack.model.Parent then
 		warn("[BalapKarung] Race dimulai tanpa active track")
@@ -227,7 +269,15 @@ function RaceService:_prepareRace()
 	self._finishCount = 0
 	table.clear(self._racers)
 
-	local currentPlayers = Players:GetPlayers()
+	local currentPlayers = {}
+	for _, player in eligiblePlayers do
+		if player.Parent == Players and player:GetAttribute("InStartArea") == true then
+			table.insert(currentPlayers, player)
+		end
+	end
+	if #currentPlayers < GameConfig.race.minimumPlayers then
+		return false
+	end
 	local random = Random.new(self._raceId * 7919)
 	for index = #currentPlayers, 2, -1 do
 		local otherIndex = random:NextInteger(1, index)
@@ -269,6 +319,7 @@ function RaceService:_prepareRace()
 		root.AssemblyAngularVelocity = Vector3.zero
 
 		player:SetAttribute("DistanceRemaining", lane.length)
+		player:SetAttribute("RaceProgress", 0)
 		player:SetAttribute("RaceStatus", "Countdown")
 		player:SetAttribute("LaneIndex", lane.index)
 
@@ -494,6 +545,7 @@ function RaceService:_finishRacer(racer)
 
 	local finishTime = Workspace:GetServerTimeNow() - self._raceStartedAt
 	racer.player:SetAttribute("DistanceRemaining", 0)
+	racer.player:SetAttribute("RaceProgress", 1)
 	racer.player:SetAttribute("FinishTime", finishTime)
 	racer.player:SetAttribute("Rank", self._finishCount)
 	racer.player:SetAttribute("RaceStatus", "Finished")
@@ -559,6 +611,7 @@ function RaceService:_updateRacers()
 			player:SetAttribute("Speed", speed)
 			player:SetAttribute("EffectiveSpeed", effectiveSpeed)
 			player:SetAttribute("DistanceRemaining", math.max(0, racer.trackLength - progress))
+			player:SetAttribute("RaceProgress", progress / racer.trackLength)
 		end
 
 		local crossedLaneTarget = progress >= racer.trackLength
@@ -580,8 +633,8 @@ function RaceService:_hasActiveRacers()
 	return false
 end
 
-function RaceService:_runRace()
-	if not self:_prepareRace() then
+function RaceService:_runRace(eligiblePlayers)
+	if not self:_prepareRace(eligiblePlayers) then
 		return
 	end
 
@@ -686,8 +739,10 @@ function RaceService:Start()
 	task.spawn(function()
 		while true do
 			self:_setState("Waiting")
-			while #Players:GetPlayers() < GameConfig.race.minimumPlayers do
-				task.wait(1)
+			local queuedPlayers = getPlayersInStartArea()
+			while #queuedPlayers < GameConfig.race.minimumPlayers do
+				task.wait(GameConfig.queue.scanIntervalSeconds)
+				queuedPlayers = getPlayersInStartArea()
 			end
 
 			local activeTrack, trackProblem = self._trackService:ActivateNextTrack()
@@ -700,13 +755,40 @@ function RaceService:Start()
 
 			self._activeTrack = activeTrack
 			Workspace:SetAttribute("TrackSetupError", "")
-			self:_setState("Intermission", GameConfig.race.intermissionSeconds)
-			for remaining = GameConfig.race.intermissionSeconds, 1, -1 do
-				Workspace:SetAttribute("Countdown", remaining)
-				task.wait(1)
+
+			local countdownCompleted = false
+			while not countdownCompleted do
+				self:_setState("Intermission", GameConfig.race.intermissionSeconds)
+				local cancelled = false
+				for remaining = GameConfig.race.intermissionSeconds, 1, -1 do
+					Workspace:SetAttribute("Countdown", remaining)
+					local secondEndsAt = Workspace:GetServerTimeNow() + 1
+					repeat
+						queuedPlayers = getPlayersInStartArea()
+						if #queuedPlayers < GameConfig.race.minimumPlayers then
+							cancelled = true
+							break
+						end
+						task.wait(GameConfig.queue.scanIntervalSeconds)
+					until Workspace:GetServerTimeNow() >= secondEndsAt
+					if cancelled then
+						break
+					end
+				end
+
+				if cancelled then
+					self:_setState("Waiting")
+					repeat
+						task.wait(GameConfig.queue.scanIntervalSeconds)
+						queuedPlayers = getPlayersInStartArea()
+					until #queuedPlayers >= GameConfig.race.minimumPlayers
+				else
+					queuedPlayers = getPlayersInStartArea()
+					countdownCompleted = #queuedPlayers >= GameConfig.race.minimumPlayers
+				end
 			end
 
-			self:_runRace()
+			self:_runRace(queuedPlayers)
 		end
 	end)
 end

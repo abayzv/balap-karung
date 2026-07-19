@@ -10,6 +10,7 @@ local LobbyTimerController = require(script.LobbyTimerController)
 local OnFireController = require(script.OnFireController)
 local RaceTimerController = require(script.RaceTimerController)
 local RaceJumpController = require(script.RaceJumpController)
+local RaceTrackerController = require(script.RaceTrackerController)
 local SoundController = require(script.SoundController)
 
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
@@ -24,6 +25,7 @@ LobbyTimerController.Start()
 OnFireController.Start()
 RaceTimerController.Start()
 RaceJumpController.Start()
+RaceTrackerController.Start()
 
 local playerGui = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
 

@@ -108,6 +108,14 @@ gameplay.
 6. Karakter dinyatakan finish saat tubuhnya overlap dengan Part finish atau sudah melewati
    MoveTarget pada lane miliknya.
 
+## Area Antrean Lobby
+
+- Buat sebuah `BasePart` di `Workspace` dan beri tag `StartPart`.
+- Ukuran dan rotasi Part menjadi volume pendeteksi pemain; `HumanoidRootPart` harus berada di dalam
+  volume tersebut.
+- Countdown hanya berjalan selama minimal dua pemain berada di dalam gabungan seluruh StartPart.
+- Attribute `InStartArea` pada Player dan `PlayersInStartArea` pada Workspace tersedia untuk debug.
+
 Attributes runtime berikut tersedia pada `Workspace` untuk debugging:
 
 - `ActiveTrackId`

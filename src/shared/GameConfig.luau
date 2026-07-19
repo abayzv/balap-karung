@@ -1,7 +1,7 @@
 local GameConfig = {
 	projectName = "BalapKarung",
 	race = {
-		minimumPlayers = 1,
+		minimumPlayers = 2,
 		intermissionSeconds = 30,
 		countdownSeconds = 10,
 		startSignalSeconds = 0.75,
@@ -21,6 +21,10 @@ local GameConfig = {
 			moveTarget = "MoveTarget",
 			finish = "BalapKarungFinish",
 		},
+	},
+	queue = {
+		startPartTag = "StartPart",
+		scanIntervalSeconds = 0.1,
 	},
 	movement = {
 		missRecoverySeconds = 0.65,
@@ -85,6 +89,10 @@ local GameConfig = {
 		hopMarkerName = "OnHop",
 	},
 	sounds = {
+		backgroundMusic = {
+			soundId = "rbxassetid://108881053322600",
+			volume = 0.35,
+		},
 		hop = {
 			soundId = "rbxassetid://129472345262950",
 			volume = 0.65,

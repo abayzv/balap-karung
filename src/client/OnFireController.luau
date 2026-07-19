@@ -111,6 +111,7 @@ function OnFireController.Start()
 	local fillTween = nil
 	local fillGradient = nil
 	local displayGui = nil
+	local displayFrame = nil
 	local displayScale = nil
 	local baseDisplayScale = 1
 	local displayPulse = nil
@@ -146,6 +147,7 @@ function OnFireController.Start()
 	local function attachDisplay(gui)
 		displayGui = gui
 		local frame = gui:WaitForChild("Frame")
+		displayFrame = frame
 		local overlay = frame:WaitForChild("OnfireOverlay")
 		displayScale = frame:FindFirstChildOfClass("UIScale")
 		if displayScale then
@@ -158,7 +160,9 @@ function OnFireController.Start()
 			fillGradient.Rotation = 0
 			fillGradient.Parent = overlay
 		end
-		displayGui.Enabled = player:GetAttribute("IsRace") == true
+		local isRace = player:GetAttribute("IsRace") == true
+		displayGui.Enabled = isRace
+		displayFrame.Visible = isRace
 		renderFill()
 	end
 
@@ -228,8 +232,12 @@ function OnFireController.Start()
 	end
 
 	local function updateVisibility()
+		local isRace = player:GetAttribute("IsRace") == true
 		if displayGui then
-			displayGui.Enabled = player:GetAttribute("IsRace") == true
+			displayGui.Enabled = isRace
+		end
+		if displayFrame then
+			displayFrame.Visible = isRace
 		end
 	end
 

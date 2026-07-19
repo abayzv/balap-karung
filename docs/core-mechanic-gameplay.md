@@ -177,6 +177,17 @@ mengubah tempo Reaction Window tanpa mengubah movement Speed.
 Efek kamera On Fire memakai transisi FOV dari 70 ke 88 dan vignette tipis. Blur tidak digunakan agar
 track tetap jelas dibaca.
 
+### Race Tracker
+
+- Server mereplikasi `RaceProgress` bernilai 0–1 berdasarkan jarak karakter dari lane spawn menuju
+  `MoveTarget` lane tersebut.
+- Bar putih semi-transparan di bagian atas menampilkan headshot semua pemain yang sedang race.
+- Posisi avatar bergerak dari sisi kiri ke kanan mengikuti progress yang telah dinormalisasi.
+- Avatar pemain lokal memakai outline kuning dan posisi vertikal racer dibuat berselang agar tidak
+  sepenuhnya bertumpuk.
+- Tracker hanya terlihat setelah state race berubah menjadi `Racing`, lalu disembunyikan kembali saat
+  race selesai.
+
 ---
 
 ## 7. Feedback Gameplay
@@ -240,6 +251,7 @@ Setiap input harus menghasilkan feedback dalam waktu secepat mungkin.
 - `miss`: diputar ketika server memberi verdict Miss.
 - `onFireEnter`: diputar satu kali ketika On Fire aktif.
 - `onFireLoop`: diputar berulang setelah intro, memakai crossfade pendek agar transisinya mulus.
+- `backgroundMusic`: diputar terus secara loop pada masing-masing client.
 - Sound ID dan volume diatur terpusat melalui `GameConfig.sounds`.
 - Sound ID dibiarkan kosong sampai asset final dipilih.
 
@@ -249,8 +261,13 @@ Setiap input harus menghasilkan feedback dalam waktu secepat mungkin.
 
 ### Start
 
-- Semua pemain ditempatkan di garis start.
-- Sebelum race, pemain menunggu selama 30 detik di lobby.
+- Lobby memakai satu atau beberapa volume `BasePart` bertag `StartPart` sebagai area antrean.
+- Countdown lobby 30 detik baru dimulai ketika minimal dua pemain berada di dalam area antrean.
+- Hanya pemain di dalam `StartPart` yang melihat Timer lobby dan dapat masuk ke race.
+- Jika jumlah pemain di area turun di bawah dua, countdown dibatalkan dan diulang dari awal setelah
+  syarat pemain kembali terpenuhi.
+- Daftar peserta diambil kembali ketika countdown selesai, lalu hanya peserta tersebut yang
+  ditempatkan di garis start dan melihat RaceTimer.
 - Track berikutnya dipilih secara acak tanpa pengulangan langsung dan sudah di-clone ke
   `Workspace.ActiveTrack` selama waktu tunggu lobby.
 - Timer lobby menggunakan `StarterGui.Timer.Frame.LocationTile.Bottom.Countdown`.

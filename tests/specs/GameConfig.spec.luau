@@ -21,7 +21,9 @@ return function()
 		end)
 
 		it("waits thirty seconds in the lobby before a race", function()
+			expect(GameConfig.race.minimumPlayers).to.equal(2)
 			expect(GameConfig.race.intermissionSeconds).to.equal(30)
+			expect(GameConfig.queue.startPartTag).to.equal("StartPart")
 		end)
 
 		it("uses the ten second race countdown", function()
@@ -69,6 +71,12 @@ return function()
 		it("configures the one-shot and looping On Fire sounds", function()
 			expect(GameConfig.sounds.onFireEnter.soundId).to.equal("rbxassetid://130422645188028")
 			expect(GameConfig.sounds.onFireLoop.soundId).to.equal("rbxassetid://82555625627924")
+		end)
+
+		it("configures client background music", function()
+			expect(GameConfig.sounds.backgroundMusic.soundId).to.equal(
+				"rbxassetid://108881053322600"
+			)
 		end)
 
 		it("removes the tap-to-tap gap from faster stages", function()

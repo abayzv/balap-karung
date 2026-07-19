@@ -14,11 +14,12 @@ function RaceTimerController.Start()
 	local locationTile = timerGui:WaitForChild("Frame"):WaitForChild("LocationTile")
 	local title = locationTile:WaitForChild("Title")
 	local countdownLabel = locationTile:WaitForChild("Bottom"):WaitForChild("Countdown")
+	local localPlayer = Players.LocalPlayer
 
 	local function render()
 		local state = Workspace:GetAttribute("RaceState") or "Waiting"
 		local countdown = Workspace:GetAttribute("Countdown") or 0
-		local isCountdown = state == "Countdown"
+		local isCountdown = state == "Countdown" and localPlayer:GetAttribute("IsRace") == true
 		timerGui.Enabled = isCountdown
 
 		if not isCountdown then
@@ -39,6 +40,7 @@ function RaceTimerController.Start()
 
 	Workspace:GetAttributeChangedSignal("RaceState"):Connect(render)
 	Workspace:GetAttributeChangedSignal("Countdown"):Connect(render)
+	localPlayer:GetAttributeChangedSignal("IsRace"):Connect(render)
 	render()
 end
 
