@@ -16,7 +16,7 @@ local function App(props)
 	local reactionToken = React.useRef(0)
 	local feedbackToken = React.useRef(0)
 	local lastReactionPosition = React.useRef({ x = 0.5, y = 0.5 })
-	local buttonScaleRef = React.useRef(nil)
+	local timingScaleRef = React.useRef(nil)
 	local feedbackLabelRef = React.useRef(nil)
 
 	React.useEffect(function()
@@ -37,6 +37,8 @@ local function App(props)
 
 					setReaction({
 						id = payload.id,
+						opensAt = payload.opensAt,
+						duration = payload.duration,
 						expiresAt = payload.opensAt + payload.duration,
 						chainIndex = payload.chainIndex,
 						chainLength = payload.chainLength,
@@ -58,15 +60,14 @@ local function App(props)
 				end)
 			elseif payload.action == "result" then
 				setReaction(nil)
-				if payload.verdict == "Good" or payload.verdict == "Perfect" then
-					feedbackToken.current += 1
-					setFeedback({
-						id = feedbackToken.current,
-						text = string.upper(payload.verdict),
-						startX = lastReactionPosition.current.x,
-						startY = lastReactionPosition.current.y,
-					})
-				end
+				feedbackToken.current += 1
+				setFeedback({
+					id = feedbackToken.current,
+					text = string.upper(payload.verdict),
+					startX = lastReactionPosition.current.x,
+					startY = lastReactionPosition.current.y,
+					fallsToSpeedDisplay = payload.verdict == "Good" or payload.verdict == "Perfect",
+				})
 			else
 				setReaction(function()
 					return nil
@@ -88,20 +89,35 @@ local function App(props)
 		local playerGui = Players.LocalPlayer:FindFirstChild("PlayerGui")
 		local speedDisplay = playerGui and playerGui:FindFirstChild("SpeedDisplay")
 		local targetFrame = speedDisplay and speedDisplay:FindFirstChild("Frame")
-		if not label or not targetFrame then
+		if not label or (feedback.fallsToSpeedDisplay and not targetFrame) then
 			setFeedback(nil)
 			return
 		end
 
-		local targetPosition = targetFrame.AbsolutePosition + targetFrame.AbsoluteSize / 2
-		local tween = TweenService:Create(
-			label,
-			TweenInfo.new(0.62, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
-			{
+		local targetPosition = if targetFrame
+			then targetFrame.AbsolutePosition + targetFrame.AbsoluteSize / 2
+			else Vector2.zero
+		local tweenGoal = if feedback.fallsToSpeedDisplay
+			then {
 				Position = UDim2.fromOffset(targetPosition.X, targetPosition.Y),
 				Rotation = -12,
 				TextTransparency = 0.15,
 			}
+			else {
+				Position = UDim2.fromScale(feedback.startX, feedback.startY - 0.07),
+				Rotation = 0,
+				TextTransparency = 1,
+			}
+		local tween = TweenService:Create(
+			label,
+			TweenInfo.new(
+				if feedback.fallsToSpeedDisplay then 0.62 else 0.45,
+				Enum.EasingStyle.Quad,
+				if feedback.fallsToSpeedDisplay
+					then Enum.EasingDirection.In
+					else Enum.EasingDirection.Out
+			),
+			tweenGoal
 		)
 		tween:Play()
 		local connection = tween.Completed:Connect(function()
@@ -124,41 +140,24 @@ local function App(props)
 			return
 		end
 
-		local scale = buttonScaleRef.current
-		local popTween
-		local pulseTween
-		local popConnection
+		local scale = timingScaleRef.current
+		local timingTween
 
 		if scale then
-			scale.Scale = 0.72
-			popTween = TweenService:Create(
+			local now = Workspace:GetServerTimeNow()
+			local elapsedRatio = math.clamp((now - reaction.opensAt) / reaction.duration, 0, 1)
+			scale.Scale = 0.42 + 0.76 * elapsedRatio
+			timingTween = TweenService:Create(
 				scale,
-				TweenInfo.new(0.22, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
-				{ Scale = 1 }
+				TweenInfo.new(math.max(0.01, reaction.expiresAt - now), Enum.EasingStyle.Linear),
+				{ Scale = 1.18 }
 			)
-			popTween:Play()
-			popConnection = popTween.Completed:Connect(function(playbackState)
-				if playbackState ~= Enum.PlaybackState.Completed then
-					return
-				end
-				pulseTween = TweenService:Create(
-					scale,
-					TweenInfo.new(0.46, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
-					{ Scale = 1.055 }
-				)
-				pulseTween:Play()
-			end)
+			timingTween:Play()
 		end
 
 		return function()
-			if popConnection then
-				popConnection:Disconnect()
-			end
-			if popTween then
-				popTween:Cancel()
-			end
-			if pulseTween then
-				pulseTween:Cancel()
+			if timingTween then
+				timingTween:Cancel()
 			end
 		end
 	end, { reaction })
@@ -204,6 +203,8 @@ local function App(props)
 			Text = feedback.text,
 			TextColor3 = if feedback.text == "PERFECT"
 				then Color3.fromRGB(255, 221, 61)
+				elseif feedback.text == "EARLY" then Color3.fromRGB(255, 151, 54)
+				elseif feedback.text == "MISS" then Color3.fromRGB(255, 72, 72)
 				else Color3.fromRGB(255, 255, 255),
 			TextSize = 36,
 			TextStrokeTransparency = 0.4,
@@ -212,41 +213,61 @@ local function App(props)
 		Reaction = reaction and e("TextButton", {
 			AnchorPoint = Vector2.new(0.5, 0.5),
 			AutoButtonColor = false,
-			BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+			BackgroundTransparency = 1,
 			Interactable = true,
 			Position = UDim2.fromScale(reaction.screenX, reaction.screenY),
 			Rotation = 0,
-			Size = UDim2.fromOffset(112, 112),
+			Size = UDim2.fromOffset(132, 132),
 			Text = "",
 			key = tostring(reaction.id),
 			[React.Event.Activated] = submitReaction,
 		}, {
-			Corner = e("UICorner", { CornerRadius = UDim.new(1, 0) }),
-			Gradient = e("UIGradient", {
-				Color = ColorSequence.new({
-					ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 82, 82)),
-					ColorSequenceKeypoint.new(1, Color3.fromRGB(130, 0, 16)),
-				}),
-				Rotation = 90,
-			}),
-			Scale = e("UIScale", {
-				Scale = 0.72,
-				ref = buttonScaleRef,
-			}),
-			Stroke = e("UIStroke", {
-				Color = Color3.fromRGB(255, 182, 182),
-				Thickness = 5,
-			}),
-			Icon = e("ImageLabel", {
+			Target = e("Frame", {
 				AnchorPoint = Vector2.new(0.5, 0.5),
 				BackgroundTransparency = 1,
-				Image = GameConfig.ui.reactionIcon,
-				ImageColor3 = Color3.fromRGB(255, 255, 255),
-				ImageTransparency = 0,
 				Position = UDim2.fromScale(0.5, 0.5),
-				ScaleType = Enum.ScaleType.Fit,
-				Size = UDim2.fromScale(0.56, 0.56),
+				Size = UDim2.fromOffset(112, 112),
+			}, {
+				Corner = e("UICorner", { CornerRadius = UDim.new(1, 0) }),
+				Glow = e("UIStroke", {
+					Color = Color3.fromRGB(255, 225, 92),
+					Thickness = 7,
+					Transparency = 0.28,
+				}),
+			}),
+			TapCore = e("Frame", {
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+				Position = UDim2.fromScale(0.5, 0.5),
+				Size = UDim2.fromOffset(112, 112),
 				ZIndex = 2,
+			}, {
+				Corner = e("UICorner", { CornerRadius = UDim.new(1, 0) }),
+				Gradient = e("UIGradient", {
+					Color = ColorSequence.new({
+						ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 82, 82)),
+						ColorSequenceKeypoint.new(1, Color3.fromRGB(130, 0, 16)),
+					}),
+					Rotation = 90,
+				}),
+				Scale = e("UIScale", {
+					Scale = 0.42,
+					ref = timingScaleRef,
+				}),
+				Stroke = e("UIStroke", {
+					Color = Color3.fromRGB(255, 182, 182),
+					Thickness = 3,
+				}),
+				Icon = e("ImageLabel", {
+					AnchorPoint = Vector2.new(0.5, 0.5),
+					BackgroundTransparency = 1,
+					Image = GameConfig.ui.reactionIcon,
+					ImageColor3 = Color3.fromRGB(255, 255, 255),
+					Position = UDim2.fromScale(0.5, 0.5),
+					ScaleType = Enum.ScaleType.Fit,
+					Size = UDim2.fromScale(0.56, 0.56),
+					ZIndex = 3,
+				}),
 			}),
 		}) or nil,
 	})

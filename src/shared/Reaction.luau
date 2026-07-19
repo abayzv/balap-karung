@@ -9,7 +9,15 @@ function Reaction.verdictFor(reactionSeconds, windowDurationSeconds)
 		return nil
 	end
 
-	if reactionSeconds <= GameConfig.reactionWindow.perfectThresholdSeconds then
+	local progress = reactionSeconds / windowDurationSeconds
+	if progress < GameConfig.reactionWindow.earlyEndRatio then
+		return "Early"
+	end
+
+	if
+		progress >= GameConfig.reactionWindow.perfectStartRatio
+		and progress <= GameConfig.reactionWindow.perfectEndRatio
+	then
 		return "Perfect"
 	end
 

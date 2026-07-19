@@ -42,7 +42,10 @@ function SoundController.Start(reactionRemote)
 			return
 		end
 
-		SoundController.Play(string.lower(payload.verdict))
+		local soundName = if payload.verdict == "Early"
+			then "miss"
+			else string.lower(payload.verdict)
+		SoundController.Play(soundName)
 	end)
 end
 

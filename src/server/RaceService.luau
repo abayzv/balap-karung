@@ -11,6 +11,7 @@ local Speed = require(ReplicatedStorage.Shared.Speed)
 local TrackService = require(script.Parent.TrackService)
 
 local RACER_COLLISION_GROUP = "BalapKarungRacers"
+local ON_FIRE_AURA_ATTRIBUTE = "BalapKarungOnfireAura"
 
 local RaceService = {}
 RaceService.__index = RaceService
@@ -26,13 +27,13 @@ local function isCharacterInsideFinish(character, finish)
 end
 
 local function setPlayerDefaults(player)
-	local startingTier = GameConfig.speed.startingTier
-	player:SetAttribute("Speed", Speed.valueForTier(startingTier))
-	player:SetAttribute("SpeedTier", startingTier)
-	player:SetAttribute("SpeedTierName", Speed.getTier(startingTier).name)
-	player:SetAttribute("PerfectStreak", 0)
+	player:SetAttribute("Speed", GameConfig.speed.normalValue)
+	player:SetAttribute("NoMissStreak", 0)
+	player:SetAttribute("OnFireProgress", 0)
+	player:SetAttribute("TempoStage", 1)
+	player:SetAttribute("OnFire", false)
 	player:SetAttribute("SpeedMultiplier", 1)
-	player:SetAttribute("EffectiveSpeed", Speed.valueForTier(startingTier))
+	player:SetAttribute("EffectiveSpeed", GameConfig.speed.normalValue)
 	player:SetAttribute("BoostEndsAt", 0)
 	player:SetAttribute("IsRecovering", false)
 	player:SetAttribute("DistanceRemaining", GameConfig.race.trackLengthStuds)
@@ -75,6 +76,60 @@ local function restoreLobbyCharacter(player, character)
 		root.Anchored = false
 		root.AssemblyLinearVelocity = Vector3.zero
 		root.AssemblyAngularVelocity = Vector3.zero
+	end
+end
+
+local function moveCharacterToLobby(character)
+	local lobbySpawn = Workspace:FindFirstChild("SpawnLocation")
+	local root = character:FindFirstChild("HumanoidRootPart")
+	if not lobbySpawn or not lobbySpawn:IsA("BasePart") or not root then
+		return false
+	end
+
+	local lobbyPosition = (lobbySpawn.CFrame * CFrame.new(
+		0,
+		lobbySpawn.Size.Y / 2 + GameConfig.track.characterSpawnHeight,
+		0
+	)).Position
+	character:PivotTo(CFrame.lookAt(lobbyPosition, lobbyPosition + lobbySpawn.CFrame.LookVector))
+	root.AssemblyLinearVelocity = Vector3.zero
+	root.AssemblyAngularVelocity = Vector3.zero
+	return true
+end
+
+local function updateOnFireAura(player, character)
+	if not character then
+		return
+	end
+
+	local upperTorso = character:FindFirstChild("UpperTorso")
+	if not upperTorso or not upperTorso:IsA("BasePart") then
+		return
+	end
+
+	for _, child in upperTorso:GetChildren() do
+		if child:GetAttribute(ON_FIRE_AURA_ATTRIBUTE) == true then
+			child:Destroy()
+		end
+	end
+
+	if player:GetAttribute("OnFire") ~= true then
+		return
+	end
+
+	local template = ReplicatedStorage:FindFirstChild("OnfireAura")
+	local sourcePart = template and template:FindFirstChild("Torso", true)
+	if not sourcePart or not sourcePart:IsA("BasePart") then
+		warn("[BalapKarung] ReplicatedStorage.OnfireAura.Torso tidak ditemukan")
+		return
+	end
+
+	for _, child in sourcePart:GetChildren() do
+		if child:IsA("ParticleEmitter") then
+			local particle = child:Clone()
+			particle:SetAttribute(ON_FIRE_AURA_ATTRIBUTE, true)
+			particle.Parent = upperTorso
+		end
 	end
 end
 
@@ -225,9 +280,10 @@ function RaceService:_prepareRace()
 			forward = lane.forward,
 			startOrigin = spawn.Position,
 			trackLength = lane.length,
-			speedTier = GameConfig.speed.startingTier,
-			speed = Speed.valueForTier(GameConfig.speed.startingTier),
-			perfectStreak = 0,
+			speed = GameConfig.speed.normalValue,
+			noMissStreak = 0,
+			tempoStage = 1,
+			onFire = false,
 			speedMultiplier = 1,
 			boostEndsAt = 0,
 			lastReplicationAt = 0,
@@ -254,16 +310,8 @@ function RaceService:_returnPlayersToLobby()
 		end
 
 		local character = player.Character
-		local root = character and character:FindFirstChild("HumanoidRootPart")
-		if character and root then
-			local lobbyPosition = (lobbySpawn.CFrame * CFrame.new(
-				0,
-				lobbySpawn.Size.Y / 2 + GameConfig.track.characterSpawnHeight,
-				0
-			)).Position
-			character:PivotTo(
-				CFrame.lookAt(lobbyPosition, lobbyPosition + lobbySpawn.CFrame.LookVector)
-			)
+		if character then
+			moveCharacterToLobby(character)
 		end
 		setPlayerDefaults(player)
 		if character then
@@ -291,16 +339,17 @@ function RaceService:_resolveReaction(racer, verdict)
 		return
 	end
 
-	local previousTier = racer.speedTier
-	racer.speedTier, racer.perfectStreak =
-		Speed.applyVerdict(racer.speedTier, racer.perfectStreak, verdict)
-	racer.speed = Speed.valueForTier(racer.speedTier)
+	local wasOnFire = racer.onFire
+	racer.noMissStreak, racer.tempoStage, racer.onFire =
+		Speed.applyVerdict(racer.noMissStreak, verdict)
+	racer.speed = Speed.valueForOnFire(racer.onFire)
 	racer.player:SetAttribute("Speed", racer.speed)
-	racer.player:SetAttribute("SpeedTier", racer.speedTier)
-	racer.player:SetAttribute("SpeedTierName", Speed.getTier(racer.speedTier).name)
-	racer.player:SetAttribute("PerfectStreak", racer.perfectStreak)
+	racer.player:SetAttribute("NoMissStreak", racer.noMissStreak)
+	racer.player:SetAttribute("OnFireProgress", racer.noMissStreak)
+	racer.player:SetAttribute("TempoStage", racer.tempoStage)
+	racer.player:SetAttribute("OnFire", racer.onFire)
 	racer.player:SetAttribute("LastVerdict", verdict)
-	if verdict == "Miss" then
+	if verdict == "Early" or verdict == "Miss" then
 		self:_startMissRecovery(racer)
 	else
 		racer.speedMultiplier = GameConfig.speed.verdictMultiplier[verdict]
@@ -312,8 +361,9 @@ function RaceService:_resolveReaction(racer, verdict)
 	self._reactionWindowRemote:FireClient(racer.player, {
 		action = "result",
 		verdict = verdict,
-		tierUp = racer.speedTier > previousTier,
-		tierDown = racer.speedTier < previousTier,
+		onFireTriggered = not wasOnFire and racer.onFire,
+		onFireEnded = wasOnFire and not racer.onFire,
+		progress = racer.noMissStreak,
 		multiplier = racer.speedMultiplier,
 	})
 end
@@ -322,21 +372,21 @@ function RaceService:_runReactionLoop(racer)
 	local random = Random.new(racer.player.UserId + self._raceId * 1000)
 
 	while self._state == "Racing" and not racer.finished and racer.raceId == self._raceId do
-		task.wait(
-			random:NextNumber(
-				GameConfig.reactionWindow.minimumIntervalSeconds,
-				GameConfig.reactionWindow.maximumIntervalSeconds
-			)
-		)
+		local tempo = Speed.tempoForProgress(racer.noMissStreak)
+		if racer.tempoStage == 1 then
+			task.wait(random:NextNumber(tempo.minimumIntervalSeconds, tempo.maximumIntervalSeconds))
+		end
 
 		if self._state ~= "Racing" or racer.finished or racer.raceId ~= self._raceId then
 			break
 		end
 
-		local chainLength = random:NextInteger(
-			GameConfig.reactionWindow.minimumChainLength,
-			GameConfig.reactionWindow.maximumChainLength
-		)
+		local chainLength = if racer.tempoStage >= 2
+			then 1
+			else random:NextInteger(
+				GameConfig.reactionWindow.minimumChainLength,
+				GameConfig.reactionWindow.maximumChainLength
+			)
 
 		for chainIndex = 1, chainLength do
 			if self._state ~= "Racing" or racer.finished or racer.raceId ~= self._raceId then
@@ -344,9 +394,12 @@ function RaceService:_runReactionLoop(racer)
 			end
 
 			self._eventId += 1
-			local duration = Speed.reactionDurationForTier(racer.speedTier)
-			local opensAt = Workspace:GetServerTimeNow()
-				+ GameConfig.reactionWindow.scheduleLeadSeconds
+			local currentTempo = Speed.tempoForProgress(racer.noMissStreak)
+			local duration = currentTempo.reactionDurationSeconds
+			local scheduleLead = if racer.tempoStage >= 2
+				then 0
+				else GameConfig.reactionWindow.scheduleLeadSeconds
+			local opensAt = Workspace:GetServerTimeNow() + scheduleLead
 			local event = {
 				id = self._eventId,
 				opensAt = opensAt,
@@ -394,7 +447,7 @@ function RaceService:_runReactionLoop(racer)
 			end
 
 			if chainIndex < chainLength then
-				task.wait(GameConfig.reactionWindow.chainGapSeconds)
+				task.wait(Speed.tempoForProgress(racer.noMissStreak).chainGapSeconds)
 			end
 		end
 	end
@@ -445,6 +498,8 @@ function RaceService:_finishRacer(racer)
 	racer.player:SetAttribute("Rank", self._finishCount)
 	racer.player:SetAttribute("RaceStatus", "Finished")
 	racer.player:SetAttribute("IsRecovering", false)
+	racer.speedMultiplier = 1
+	racer.boostEndsAt = 0
 	racer.player:SetAttribute("SpeedMultiplier", 1)
 	racer.player:SetAttribute("EffectiveSpeed", racer.speed)
 	racer.player:SetAttribute("BoostEndsAt", 0)
@@ -582,22 +637,34 @@ function RaceService:Start()
 
 	local function registerPlayer(player)
 		setPlayerDefaults(player)
+		player:GetAttributeChangedSignal("OnFire"):Connect(function()
+			updateOnFireAura(player, player.Character)
+		end)
 		player:GetAttributeChangedSignal("IsRace"):Connect(function()
 			if player.Character then
 				updateJumpState(player, player.Character)
 			end
 		end)
-		player.CharacterAdded:Connect(function(character)
-			task.defer(function()
+
+		local function handleCharacter(character)
+			task.spawn(function()
+				local root = character:WaitForChild("HumanoidRootPart", 5)
+				if not root or player.Character ~= character then
+					return
+				end
 				if player:GetAttribute("IsRace") == true then
 					updateJumpState(player, character)
 				else
 					restoreLobbyCharacter(player, character)
+					moveCharacterToLobby(character)
 				end
+				updateOnFireAura(player, character)
 			end)
-		end)
+		end
+
+		player.CharacterAdded:Connect(handleCharacter)
 		if player.Character then
-			restoreLobbyCharacter(player, player.Character)
+			handleCharacter(player.Character)
 		end
 	end
 

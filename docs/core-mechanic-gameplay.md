@@ -37,7 +37,7 @@ Reaction Window muncul
     ↓
 Pemain menekan tombol atau melewatkannya
     ↓
-Hasil: Perfect / Good / Miss
+Hasil: Early / Good / Perfect / Miss
     ↓
 Speed diperbarui
     ↓
@@ -107,33 +107,37 @@ Prompt muncul → Pemain tap → Jeda 0,35 detik → Prompt berikutnya / chain s
 1. Indikator muncul pada posisi layar yang dipilih secara acak untuk setiap prompt.
 2. Posisi dibatasi ke safe area mobile agar tombol tidak terpotong atau tertutup UI utama.
 3. Indikator berbentuk lingkaran dengan icon placeholder, tanpa teks urutan atau timer.
-4. Saat muncul, lingkaran melakukan scale pop lalu pulse selama window aktif.
+4. Glow outline tetap pada ukuran target, sementara lingkaran merah mulai kecil lalu membesar.
 5. Tombol tidak bergerak setelah muncul; posisi baru dipilih pada prompt berikutnya.
 6. Pemain menekan tombol satu kali selama window aktif.
-7. Setelah ditekan, lingkaran jatuh ke bawah layar dengan akselerasi, drift, dan rotasi seperti terkena gravitasi.
-8. Sistem menghitung waktu reaksi sejak indikator muncul.
+7. Setelah ditekan, tombol langsung menghilang; hanya teks Good atau Perfect yang jatuh ke SpeedDisplay.
+8. Sistem membandingkan waktu input dengan progress animasi timing ring.
 9. Hasil langsung ditampilkan dan memengaruhi Speed.
 10. Setelah input berhasil, prompt berikutnya muncul setelah jeda 0,35 detik.
 11. Satu chain berisi 1–3 prompt.
-12. Jika pemain tidak menekan sampai window berakhir, hasilnya Miss dan chain langsung berhenti.
+12. Jika pemain menekan saat lingkaran masih terlalu kecil, hasilnya Early.
+13. Jika pemain tidak menekan sampai window berakhir, hasilnya Miss dan chain langsung berhenti.
 
 Animasi indikator hanya berfungsi sebagai feedback visual. Posisi dan animasinya tidak menentukan hasil gameplay.
 
 ### Nilai awal timing
 
-| Hasil | Waktu reaksi sejak muncul | Efek |
+| Hasil | Posisi timing ring | Efek |
 |---|---:|---|
-| Perfect | 0–400 ms | Speed 2× selama 3 detik; Streak +1; chain berlanjut |
-| Good | Setelah 400 ms, sebelum window habis | Speed 1,5× selama 3 detik; Streak 0; chain berlanjut |
-| Miss | Window habis / tidak menekan | Boost batal; Streak 0; Speed Tier turun; recovery; chain berhenti |
+| Early | Sebelum 55% window | Progress kembali 0; On Fire mati; recovery; chain berhenti |
+| Good | 55–70% atau 85–100% window | Progress tanpa Miss +1; chain berlanjut |
+| Perfect | 70–85% window | Progress tanpa Miss +1; chain berlanjut |
+| Miss | Window habis / tidak menekan | Progress kembali 0; On Fire mati; recovery; chain berhenti |
 
 Catatan:
 
-- Tidak ada penalti karena menekan terlalu cepat setelah indikator muncul.
+- Menekan terlalu cepat setelah indikator muncul menghasilkan Early beserta penalti setara Miss.
 - Input sebelum indikator aktif diabaikan dan tidak dapat disimpan untuk event berikutnya.
 - Hasil dihitung dari waktu input terhadap waktu kemunculan indikator, bukan dari animasi visualnya.
-- Durasi aktif Reaction Window mengikuti Speed Tier pemain.
-- Perfect threshold tetap **400 ms** pada semua tier.
+- Durasi aktif Reaction Window mengikuti Tempo Stage pemain.
+- Verdict memakai rasio durasi sehingga target visual tetap konsisten pada setiap Tempo Stage.
+- Lingkaran merah membesar dari dalam dan sejajar dengan glow outline pada area Perfect.
+- Menekan Space berulang sejak prompt muncul akan menghasilkan Early, sehingga spam tidak menguntungkan.
 
 ### Frekuensi event
 
@@ -150,30 +154,28 @@ Randomisasi mencegah pemain sekadar menghafal pola. Posisi berubah pada setiap p
 
 ## 6. Speed System
 
-Speed adalah kecepatan maju karakter dalam studs per detik. Speed dibagi menjadi empat tier yang juga menentukan durasi Reaction Window.
+Speed hanya memiliki dua state movement: Normal dan On Fire. Di antara keduanya, progress tanpa Miss
+mengubah tempo Reaction Window tanpa mengubah movement Speed.
 
 ### Perubahan Speed
 
-- Semua pemain mulai pada tier Normal.
-- Tiga Perfect berturut-turut menaikkan Speed satu tier.
-- Perfect langsung memberi multiplier **2× selama 3 detik**.
-- Good langsung memberi multiplier **1,5× selama 3 detik**.
-- Good tidak mengubah tier, tetapi mengembalikan Perfect Streak ke 0.
-- Miss menurunkan Speed satu tier, mengembalikan streak ke 0, dan menghentikan chain.
-- Miss langsung membatalkan boost aktif.
-- Speed tidak turun secara pasif.
-- Miss pada tier Normal tidak menurunkan Speed lagi.
+- Semua pemain mulai Normal pada 32 studs/detik dengan progress 0.
+- Good dan Perfect masing-masing menambah satu progress tanpa Miss.
+- Tiga input tanpa Miss mengaktifkan Tempo Stage 2, tetapi movement tetap Normal.
+- Lima input tanpa Miss mengaktifkan Tempo Stage 3 dan `OnFire = true`.
+- On Fire meningkatkan movement menjadi 44 studs/detik.
+- Early atau Miss mengembalikan progress ke 0, mematikan On Fire, dan menghentikan chain.
+- Good memberi multiplier 1,5× dan Perfect 2× selama 3 detik.
+- Setelah burst habis, On Fire mempertahankan base Speed 44 selama pemain tidak Miss.
 
-Perfect atau Good baru akan mengganti multiplier aktif dan mengulang durasinya dari 3 detik.
+| Stage | Progress | Speed | Durasi prompt | Interval chain |
+|---|---:|---:|---:|---:|
+| Standard | 0–2 | 32 | 1,20 detik | 2,5–4 detik |
+| Fast Tempo | 3–4 | 32 | 1,05 detik | Tanpa jeda setelah tap |
+| On Fire | 5 | 44 | 0,95 detik | Tanpa jeda setelah tap |
 
-| Tier | Speed | Durasi prompt |
-|---|---:|---:|
-| Normal | 32 studs/detik | 1,20 detik |
-| Fast | 36 studs/detik | 0,95 detik |
-| Rush | 40 studs/detik | 0,75 detik |
-| On Fire | 44 studs/detik | 0,60 detik |
-
-Semakin cepat pemain, semakin singkat kesempatan untuk menghindari Miss. Ketika pemain melakukan Miss, tier turun sehingga prompt berikutnya otomatis menjadi lebih mudah.
+Efek kamera On Fire memakai transisi FOV dari 70 ke 88 dan vignette tipis. Blur tidak digunakan agar
+track tetap jelas dibaca.
 
 ---
 
@@ -184,7 +186,7 @@ Setiap input harus menghasilkan feedback dalam waktu secepat mungkin.
 ### Perfect
 
 - Teks `PERFECT!` dengan warna paling menonjol.
-- Speed dan walk animation langsung menjadi 2× selama 3 detik.
+- Progress tanpa Miss bertambah satu.
 - Bunyi tajam dan memuaskan.
 - Flash/ring singkat pada Reaction Window.
 - Burst debu atau trail pada karakter.
@@ -193,7 +195,7 @@ Setiap input harus menghasilkan feedback dalam waktu secepat mungkin.
 ### Good
 
 - Teks `GOOD`.
-- Speed dan walk animation langsung menjadi 1,5× selama 3 detik.
+- Progress tanpa Miss bertambah satu.
 - Bunyi feedback yang lebih ringan.
 - Efek visual kecil.
 
@@ -207,6 +209,12 @@ Setiap input harus menghasilkan feedback dalam waktu secepat mungkin.
 - Visual tersungkur akan ditambahkan memakai fall animation khusus, bukan physics atau tween root.
 - Setelah itu karakter langsung kembali bergerak.
 - Miss tidak mengeluarkan pemain dari race dan tidak memberi stun panjang.
+
+### Early
+
+- Terjadi ketika pemain menekan sebelum timing ring mendekati outline.
+- Memakai konsekuensi gameplay yang sama dengan Miss agar spam input tidak menguntungkan.
+- Teks `EARLY` tampil singkat di dekat posisi prompt dan tidak masuk ke SpeedDisplay.
 
 ### Prinsip feedback
 
@@ -320,9 +328,9 @@ Prototype lokal boleh dibuat lebih dahulu, tetapi struktur sistem harus tetap me
 - Auto movement di tanah dari start sampai finish.
 - Satu input lintas mobile, PC, dan gamepad.
 - Reaction Window dengan Perfect, Good, dan Miss.
-- Empat Speed Tier dan durasi prompt per tier.
+- Dua Speed state dan tiga Tempo Stage.
 - Rhythm Chain berisi 1–3 prompt.
-- Speed bar, Perfect Streak, jarak tersisa, dan feedback hasil.
+- On Fire progress display dan feedback hasil.
 - Countdown, finish detection, waktu finish, dan urutan pemain.
 - Minimal dua pemain untuk menguji rasa kompetitif.
 
@@ -348,13 +356,14 @@ Core mechanic dinyatakan siap masuk tahap berikutnya jika:
 - [ ] Posisi indikator berubah pada setiap prompt dan tetap berada di safe area.
 - [ ] Indikator hanya menampilkan lingkaran dan `ImageLabel` icon placeholder.
 - [ ] Indikator melakukan pop, pulse, lalu jatuh natural ketika ditekan.
-- [ ] Perfect, Good, dan Miss sesuai dengan waktu reaksi yang ditentukan.
+- [ ] Early, Good, Perfect, dan Miss sesuai dengan posisi timing ring.
 - [ ] Tidak menekan tombol menghasilkan Miss.
 - [ ] Spam atau menahan tombol tidak memberi keuntungan.
-- [ ] Tiga Perfect beruntun menaikkan satu Speed Tier.
-- [ ] Good mereset streak tanpa mengubah Speed Tier.
-- [ ] Miss menurunkan satu Speed Tier dan menghentikan chain.
-- [ ] Durasi prompt semakin pendek pada Speed Tier yang lebih tinggi.
+- [ ] Good dan Perfect menambah progress tanpa Miss.
+- [ ] Progress 3 mengaktifkan tempo yang lebih cepat.
+- [ ] Progress 5 mengaktifkan On Fire dan Speed 44.
+- [ ] Miss mereset progress, mematikan On Fire, dan menghentikan chain.
+- [ ] SpeedDisplay terisi dari 0 sampai 10 dan efek kamera mengikuti attribute `OnFire`.
 - [ ] Dua pemain dengan performa timing berbeda menghasilkan posisi race yang berbeda secara konsisten.
 - [ ] Server menentukan hasil mechanic dan finish secara konsisten.
 - [ ] UI dapat dimainkan dengan nyaman pada layar mobile.
@@ -370,7 +379,7 @@ Catat data berikut untuk setiap race:
 
 - Durasi race.
 - Jumlah Reaction Window.
-- Jumlah dan persentase Perfect, Good, dan Miss.
+- Jumlah dan persentase Early, Good, Perfect, dan Miss.
 - Speed rata-rata dan tertinggi.
 - Selisih waktu antara posisi pertama dan terakhir.
 - Jumlah input di luar window.
@@ -393,7 +402,7 @@ Catat data berikut untuk setiap race:
 1. Buat jalur, progress tracking, start, dan finish.
 2. Implementasikan forward movement di tanah pada base Speed.
 3. Tambahkan Reaction Window dan verdict timing.
-4. Tambahkan Rhythm Chain, Perfect Streak, dan Speed Tier.
+4. Tambahkan Rhythm Chain, progress tanpa Miss, Tempo Stage, dan On Fire.
 5. Tambahkan UI dan feedback dasar.
 6. Pindahkan validasi penting ke server dan uji dengan dua pemain.
 7. Lakukan playtest dan tuning angka.
@@ -405,9 +414,9 @@ Catat data berikut untuk setiap race:
 
 Hal berikut tidak perlu diputuskan sebelum prototype pertama, tetapi harus dijawab melalui playtest:
 
-- Apakah tiga Perfect per kenaikan tier terasa terlalu cepat atau terlalu lambat?
+- Apakah syarat 3 dan 5 input tanpa Miss terasa terlalu cepat atau terlalu lambat?
 - Apakah chain sepanjang 1–3 prompt cukup bervariasi?
-- Apakah durasi prompt 1,20–0,60 detik masih terasa adil?
+- Apakah durasi prompt 1,20–0,95 detik masih terasa adil?
 - Apakah semua pemain harus mendapat jadwal event yang identik?
 - Seberapa besar efek latency compensation yang masih terasa adil?
 - Apakah pemain yang tertinggal membutuhkan comeback mechanic, atau performa timing saja sudah cukup?

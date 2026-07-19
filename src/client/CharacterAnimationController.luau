@@ -140,8 +140,8 @@ function CharacterAnimationController.Start()
 				end
 				if walkTrack then
 					local effectiveSpeed = player:GetAttribute("EffectiveSpeed")
-						or GameConfig.speed.tiers[GameConfig.speed.startingTier].value
-					local baseSpeed = GameConfig.speed.tiers[GameConfig.speed.startingTier].value
+						or GameConfig.speed.normalValue
+					local baseSpeed = GameConfig.speed.normalValue
 					local playbackSpeed = GameConfig.animations.walkPlaybackSpeedAtBase
 						* (effectiveSpeed / baseSpeed)
 					walkTrack:AdjustSpeed(math.clamp(playbackSpeed, 0.8, 4))

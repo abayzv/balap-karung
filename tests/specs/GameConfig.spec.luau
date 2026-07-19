@@ -7,10 +7,9 @@ return function()
 			expect(GameConfig.projectName).to.equal("BalapKarung")
 		end)
 
-		it("starts on a configured speed tier", function()
-			expect(GameConfig.speed.startingTier >= 1).to.equal(true)
-			expect(GameConfig.speed.startingTier <= #GameConfig.speed.tiers).to.equal(true)
-			expect(GameConfig.speed.tiers[GameConfig.speed.startingTier].value).to.equal(32)
+		it("configures Normal and On Fire movement speed", function()
+			expect(GameConfig.speed.normalValue).to.equal(32)
+			expect(GameConfig.speed.onFireValue > GameConfig.speed.normalValue).to.equal(true)
 		end)
 
 		it("supports up to ten manual track lanes", function()
@@ -30,29 +29,46 @@ return function()
 			expect(GameConfig.race.startSignalSeconds > 0).to.equal(true)
 		end)
 
-		it("keeps the perfect threshold inside every reaction window", function()
-			for _, tier in GameConfig.speed.tiers do
-				expect(
-					GameConfig.reactionWindow.perfectThresholdSeconds < tier.reactionDurationSeconds
-				).to.equal(true)
-			end
+		it("keeps timing verdict bands in order", function()
+			expect(GameConfig.reactionWindow.earlyEndRatio > 0).to.equal(true)
+			expect(
+				GameConfig.reactionWindow.earlyEndRatio
+					< GameConfig.reactionWindow.perfectStartRatio
+			).to.equal(true)
+			expect(
+				GameConfig.reactionWindow.perfectStartRatio
+					< GameConfig.reactionWindow.perfectEndRatio
+			).to.equal(true)
+			expect(GameConfig.reactionWindow.perfectEndRatio < 1).to.equal(true)
 		end)
 
-		it("keeps speed tiers harder and faster", function()
-			for index = 2, #GameConfig.speed.tiers do
-				local previousTier = GameConfig.speed.tiers[index - 1]
-				local currentTier = GameConfig.speed.tiers[index]
-				expect(currentTier.value > previousTier.value).to.equal(true)
-				expect(currentTier.reactionDurationSeconds < previousTier.reactionDurationSeconds).to.equal(
+		it("makes every progress stage faster", function()
+			for index = 2, #GameConfig.speed.tempos do
+				local previousTempo = GameConfig.speed.tempos[index - 1]
+				local currentTempo = GameConfig.speed.tempos[index]
+				expect(currentTempo.reactionDurationSeconds < previousTempo.reactionDurationSeconds).to.equal(
+					true
+				)
+				expect(currentTempo.maximumIntervalSeconds < previousTempo.maximumIntervalSeconds).to.equal(
 					true
 				)
 			end
 		end)
 
-		it("configures significant temporary verdict boosts", function()
-			expect(GameConfig.speed.verdictMultiplier.Perfect).to.equal(2)
+		it("triggers the faster stages at three and five hits", function()
+			expect(GameConfig.speed.fastTempoRequiredHits).to.equal(3)
+			expect(GameConfig.speed.onFireRequiredHits).to.equal(5)
+		end)
+
+		it("keeps the temporary Good and Perfect speed boosts", function()
 			expect(GameConfig.speed.verdictMultiplier.Good).to.equal(1.5)
+			expect(GameConfig.speed.verdictMultiplier.Perfect).to.equal(2)
 			expect(GameConfig.speed.boostDurationSeconds).to.equal(3)
+		end)
+
+		it("removes the tap-to-tap gap from faster stages", function()
+			expect(GameConfig.speed.tempos[2].chainGapSeconds).to.equal(0)
+			expect(GameConfig.speed.tempos[3].chainGapSeconds).to.equal(0)
 		end)
 
 		it("configures animation playback for the faster base movement", function()
@@ -78,6 +94,10 @@ return function()
 			expect(string.find(GameConfig.ui.reactionIcon, "rbxassetid://", 1, true) == 1).to.equal(
 				true
 			)
+		end)
+
+		it("uses the shared DynamicScale UI tag", function()
+			expect(GameConfig.ui.dynamicScaleTag).to.equal("DynamicScale")
 		end)
 
 		it("keeps random prompt positions inside the screen", function()

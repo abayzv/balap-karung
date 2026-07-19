@@ -4,46 +4,40 @@ local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 
 local Speed = {}
 
-function Speed.clampTier(tier)
-	return math.clamp(tier, 1, #GameConfig.speed.tiers)
+function Speed.clampProgress(progress)
+	return math.clamp(progress, 0, GameConfig.speed.onFireRequiredHits)
 end
 
-function Speed.getTier(tier)
-	return GameConfig.speed.tiers[Speed.clampTier(tier)]
+function Speed.stageForProgress(progress)
+	local safeProgress = Speed.clampProgress(progress)
+	if safeProgress >= GameConfig.speed.onFireRequiredHits then
+		return 3
+	elseif safeProgress >= GameConfig.speed.fastTempoRequiredHits then
+		return 2
+	end
+	return 1
 end
 
-function Speed.valueForTier(tier)
-	return Speed.getTier(tier).value
+function Speed.tempoForProgress(progress)
+	return GameConfig.speed.tempos[Speed.stageForProgress(progress)]
 end
 
-function Speed.reactionDurationForTier(tier)
-	return Speed.getTier(tier).reactionDurationSeconds
+function Speed.valueForOnFire(onFire)
+	return if onFire then GameConfig.speed.onFireValue else GameConfig.speed.normalValue
 end
 
-function Speed.applyVerdict(currentTier, currentStreak, verdict)
-	local tier = Speed.clampTier(currentTier)
-	local streak = currentStreak
-
-	if verdict == "Perfect" then
-		streak += 1
-		if streak >= GameConfig.speed.perfectsPerTier then
-			if tier < #GameConfig.speed.tiers then
-				tier += 1
-				streak = 0
-			else
-				streak = GameConfig.speed.perfectsPerTier
-			end
-		end
-	elseif verdict == "Good" then
-		streak = 0
-	elseif verdict == "Miss" then
-		tier = math.max(1, tier - 1)
-		streak = 0
+function Speed.applyVerdict(currentProgress, verdict)
+	local progress = Speed.clampProgress(currentProgress)
+	if verdict == "Perfect" or verdict == "Good" then
+		progress = Speed.clampProgress(progress + 1)
+	elseif verdict == "Early" or verdict == "Miss" then
+		progress = 0
 	else
 		error(`Unknown reaction verdict: {tostring(verdict)}`)
 	end
 
-	return tier, streak
+	local stage = Speed.stageForProgress(progress)
+	return progress, stage, stage == 3
 end
 
 return table.freeze(Speed)

@@ -26,46 +26,51 @@ local GameConfig = {
 		missRecoverySeconds = 0.65,
 	},
 	speed = {
-		startingTier = 1,
-		perfectsPerTier = 3,
+		normalValue = 32,
+		onFireValue = 44,
 		boostDurationSeconds = 3,
 		verdictMultiplier = {
 			Perfect = 2,
 			Good = 1.5,
+			Early = 1,
 			Miss = 1,
 		},
-		tiers = {
+		fastTempoRequiredHits = 3,
+		onFireRequiredHits = 5,
+		tempos = {
 			{
-				name = "Normal",
-				value = 32,
 				reactionDurationSeconds = 1.2,
+				minimumIntervalSeconds = 2.5,
+				maximumIntervalSeconds = 4,
+				chainGapSeconds = 0.35,
 			},
 			{
-				name = "Fast",
-				value = 36,
+				reactionDurationSeconds = 1.05,
+				minimumIntervalSeconds = 1.8,
+				maximumIntervalSeconds = 2.8,
+				chainGapSeconds = 0,
+			},
+			{
 				reactionDurationSeconds = 0.95,
+				minimumIntervalSeconds = 1.1,
+				maximumIntervalSeconds = 1.8,
+				chainGapSeconds = 0,
 			},
-			{
-				name = "Rush",
-				value = 40,
-				reactionDurationSeconds = 0.75,
-			},
-			{
-				name = "On Fire",
-				value = 44,
-				reactionDurationSeconds = 0.6,
-			},
+		},
+		onFireCamera = {
+			normalFieldOfView = 70,
+			fieldOfView = 88,
+			transitionSeconds = 0.85,
 		},
 	},
 	reactionWindow = {
-		perfectThresholdSeconds = 0.4,
-		minimumIntervalSeconds = 2.5,
-		maximumIntervalSeconds = 4,
+		earlyEndRatio = 0.55,
+		perfectStartRatio = 0.7,
+		perfectEndRatio = 0.85,
 		scheduleLeadSeconds = 0.25,
 		maximumClockDifferenceSeconds = 1,
 		minimumChainLength = 1,
 		maximumChainLength = 3,
-		chainGapSeconds = 0.35,
 		minimumScreenX = 0.28,
 		maximumScreenX = 0.72,
 		minimumScreenY = 0.28,
@@ -81,7 +86,7 @@ local GameConfig = {
 	},
 	sounds = {
 		hop = {
-			soundId = "rbxassetid://132773207880485",
+			soundId = "rbxassetid://129472345262950",
 			volume = 0.65,
 		},
 		good = {
@@ -99,6 +104,7 @@ local GameConfig = {
 	},
 	ui = {
 		reactionIcon = "rbxassetid://98789776453615",
+		dynamicScaleTag = "DynamicScale",
 	},
 }
 
