@@ -1,5 +1,36 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
+local React = require(ReplicatedStorage.Packages.React)
+local ReactRoblox = require(ReplicatedStorage.Packages.ReactRoblox)
+local App = require(script.App)
+local CharacterAnimationController = require(script.CharacterAnimationController)
+local LobbyTimerController = require(script.LobbyTimerController)
+local RaceTimerController = require(script.RaceTimerController)
+local RaceJumpController = require(script.RaceJumpController)
+local SoundController = require(script.SoundController)
+
+local remotes = ReplicatedStorage:WaitForChild("Remotes")
+local reactionRemote = remotes:WaitForChild("ReactionWindow")
 
 print(`[{GameConfig.projectName}] Client initialized`)
+
+SoundController.Start(reactionRemote)
+CharacterAnimationController.Start()
+LobbyTimerController.Start()
+RaceTimerController.Start()
+RaceJumpController.Start()
+
+local playerGui = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "BalapKarungUI"
+screenGui.IgnoreGuiInset = true
+screenGui.ResetOnSpawn = false
+screenGui.Parent = playerGui
+
+local root = ReactRoblox.createRoot(screenGui)
+root:render(React.createElement(App, {
+	reactionRemote = reactionRemote,
+	submitRemote = remotes:WaitForChild("SubmitReaction"),
+}))

@@ -11,7 +11,7 @@
 
 Prototype ini harus membuktikan satu hal:
 
-> Apakah kombinasi **auto-hop + reaction timing + momentum** terasa seru, kompetitif, dan membuat pemain ingin langsung mencoba lagi?
+> Apakah kombinasi **auto movement + rhythm chain + peningkatan speed** terasa seru, kompetitif, dan membuat pemain ingin langsung mencoba lagi?
 
 Fokus tahap ini hanya pengalaman selama balapan. Lobby, map voting, reward, shop, quest, dan variasi obstacle belum menjadi prioritas.
 
@@ -31,7 +31,7 @@ Fokus tahap ini hanya pengalaman selama balapan. Lobby, map voting, reward, shop
 ```text
 Race dimulai
     ↓
-Karakter auto-hop ke depan
+Karakter bergerak otomatis ke depan
     ↓
 Reaction Window muncul
     ↓
@@ -39,12 +39,12 @@ Pemain menekan tombol atau melewatkannya
     ↓
 Hasil: Perfect / Good / Miss
     ↓
-Momentum dan kecepatan diperbarui
+Speed diperbarui
     ↓
 Ulangi sampai melewati garis finish
 ```
 
-Keputusan pemain hanya satu: **kapan menekan tombol**. Kedalaman gameplay datang dari akurasi timing dan kemampuan menjaga momentum sepanjang race.
+Keputusan pemain hanya satu: **kapan menekan tombol**. Kedalaman gameplay datang dari akurasi timing dan kemampuan membangun speed sepanjang race.
 
 ---
 
@@ -58,7 +58,7 @@ Keputusan pemain hanya satu: **kapan menekan tombol**. Kedalaman gameplay datang
 
 ### Aturan kontrol
 
-- Pemain tidak mengontrol arah dan tidak perlu menekan tombol untuk hop biasa.
+- Pemain tidak mengontrol arah dan tidak perlu menekan tombol untuk bergerak.
 - Satu Reaction Window hanya menerima satu input yang valid.
 - Input saat tidak ada Reaction Window tidak memberi efek gameplay.
 - Menahan tombol tidak dihitung sebagai input berulang.
@@ -66,34 +66,29 @@ Keputusan pemain hanya satu: **kapan menekan tombol**. Kedalaman gameplay datang
 
 ---
 
-## 4. Auto-Hop
+## 4. Auto Movement
 
-Auto-hop adalah sistem pergerakan dasar karakter menuju garis finish.
+Auto movement adalah sistem pergerakan dasar karakter menuju garis finish. Karakter tetap menyentuh tanah; tidak ada physics jump atau vertical velocity.
 
-### Siklus hop
-
-1. Karakter melakukan take-off.
-2. Karakter bergerak maju selama di udara.
-3. Karakter mendarat.
-4. Setelah jeda singkat, hop berikutnya dimulai otomatis.
+Visual gerakan balap karung atau "hop" akan dibuat melalui animation pada tahap berikutnya. Animation tidak menentukan posisi maupun hasil balapan.
 
 ### Aturan
 
 - Karakter selalu mengikuti jalur race yang telah ditentukan.
 - Pemain tidak dapat keluar jalur karena input gerak.
-- Jarak dan frekuensi hop dipengaruhi oleh Momentum.
+- Server hanya mengatur forward Speed karakter.
+- Perfect dan Good tidak menghentikan movement.
+- Miss menghentikan movement sekitar 0,65 detik sebagai recovery placeholder.
 - Perubahan kecepatan harus dilakukan secara halus, bukan melonjak secara visual.
-- Animasi tidak boleh mengubah hasil simulasi balapan; gameplay ditentukan oleh sistem movement.
+- Animation tidak boleh mengubah hasil simulasi balapan.
 
 ### Nilai awal untuk playtest
 
 | Parameter | Nilai awal |
 |---|---:|
-| Interval hop pada Momentum 0 | 0,90 detik |
-| Interval hop pada Momentum 100 | 0,65 detik |
-| Kecepatan minimum | 12 studs/detik |
-| Kecepatan maksimum | 20 studs/detik |
-| Momentum awal | 30 |
+| Kecepatan awal | 32 studs/detik |
+| Kecepatan maksimum tier | 44 studs/detik |
+| Recovery Miss | 0,65 detik |
 
 Nilai ini adalah titik awal tuning, bukan angka final.
 
@@ -103,104 +98,82 @@ Nilai ini adalah titik awal tuning, bukan angka final.
 
 Reaction Window adalah indikator statis yang muncul secara tiba-tiba. Pemain harus bereaksi dan menekan tombol sebelum indikator menghilang. Semakin cepat pemain merespons setelah indikator muncul, semakin baik hasilnya.
 
-### Urutan satu event
+### Urutan satu rhythm chain
 
 ```text
-Indikator muncul → Window aktif → Pemain tap / waktu habis → Indikator menghilang → Feedback hasil
+Prompt muncul → Pemain tap → Jeda 0,35 detik → Prompt berikutnya / chain selesai
 ```
 
-1. Indikator muncul langsung pada posisi yang tetap.
-2. Indikator boleh memakai animasi ringan seperti fade-in, scale pop, glow, atau pulse.
-3. Indikator tidak bergeser, berputar mengelilingi target, atau memakai bar yang bergerak.
-4. Pemain menekan tombol satu kali selama window aktif.
-5. Sistem menghitung waktu reaksi sejak indikator muncul.
-6. Hasil langsung ditampilkan dan memengaruhi Momentum.
-7. Setelah menerima input atau durasinya habis, indikator menghilang dengan fade-out singkat.
-8. Jika pemain tidak menekan sampai window berakhir, hasilnya Miss.
+1. Indikator muncul pada posisi layar yang dipilih secara acak untuk setiap prompt.
+2. Posisi dibatasi ke safe area mobile agar tombol tidak terpotong atau tertutup UI utama.
+3. Indikator berbentuk lingkaran dengan icon placeholder, tanpa teks urutan atau timer.
+4. Saat muncul, lingkaran melakukan scale pop lalu pulse selama window aktif.
+5. Tombol tidak bergerak setelah muncul; posisi baru dipilih pada prompt berikutnya.
+6. Pemain menekan tombol satu kali selama window aktif.
+7. Setelah ditekan, lingkaran jatuh ke bawah layar dengan akselerasi, drift, dan rotasi seperti terkena gravitasi.
+8. Sistem menghitung waktu reaksi sejak indikator muncul.
+9. Hasil langsung ditampilkan dan memengaruhi Speed.
+10. Setelah input berhasil, prompt berikutnya muncul setelah jeda 0,35 detik.
+11. Satu chain berisi 1–3 prompt.
+12. Jika pemain tidak menekan sampai window berakhir, hasilnya Miss dan chain langsung berhenti.
 
 Animasi indikator hanya berfungsi sebagai feedback visual. Posisi dan animasinya tidak menentukan hasil gameplay.
 
 ### Nilai awal timing
 
-| Hasil | Waktu reaksi sejak muncul | Efek Momentum |
-|---|---:|---:|
-| Perfect | 0–400 ms | +15 |
-| Good | 401–1.500 ms | +3 |
-| Miss | lebih dari 1.500 ms / tidak menekan | -18 |
+| Hasil | Waktu reaksi sejak muncul | Efek |
+|---|---:|---|
+| Perfect | 0–400 ms | Speed 2× selama 3 detik; Streak +1; chain berlanjut |
+| Good | Setelah 400 ms, sebelum window habis | Speed 1,5× selama 3 detik; Streak 0; chain berlanjut |
+| Miss | Window habis / tidak menekan | Boost batal; Streak 0; Speed Tier turun; recovery; chain berhenti |
 
 Catatan:
 
 - Tidak ada penalti karena menekan terlalu cepat setelah indikator muncul.
 - Input sebelum indikator aktif diabaikan dan tidak dapat disimpan untuk event berikutnya.
 - Hasil dihitung dari waktu input terhadap waktu kemunculan indikator, bukan dari animasi visualnya.
-- Durasi aktif awal Reaction Window adalah **1,5 detik**.
-- Nilai Momentum selalu dibatasi antara `0–100`.
+- Durasi aktif Reaction Window mengikuti Speed Tier pemain.
+- Perfect threshold tetap **400 ms** pada semua tier.
 
 ### Frekuensi event
 
-- Reaction Window pertama muncul setelah pemain memahami ritme auto-hop, sekitar 2–3 detik setelah start.
-- Jeda awal antar-event dipilih secara acak antara **2,5–4 detik**.
-- Event tidak boleh muncul bertumpuk.
-- Harus ada jeda aman minimal **1,5 detik** setelah sebuah event selesai.
+- Rhythm Chain pertama muncul sekitar 2–4 detik setelah start.
+- Jeda antar-chain dipilih secara acak antara **2,5–4 detik**.
+- Panjang setiap chain dipilih secara acak antara **1–3 prompt**.
+- Jeda antar-prompt dalam chain adalah **0,35 detik**.
+- Chain tidak boleh muncul bertumpuk.
 - Event terakhir tidak dibuat terlalu dekat dengan garis finish agar hasilnya tetap terbaca.
 
-Randomisasi mencegah pemain sekadar menghafal pola. Indikator harus selalu muncul di area layar yang konsisten agar pemain dapat fokus pada reaksi, bukan mencari posisi UI.
+Randomisasi mencegah pemain sekadar menghafal pola. Posisi berubah pada setiap prompt, tetapi tetap dibatasi ke safe area layar.
 
 ---
 
-## 6. Momentum System
+## 6. Speed System
 
-Momentum adalah nilai `0–100` yang menggambarkan performa pemain selama race. Momentum secara langsung menentukan kecepatan maju dan ritme hop.
+Speed adalah kecepatan maju karakter dalam studs per detik. Speed dibagi menjadi empat tier yang juga menentukan durasi Reaction Window.
 
-### Perubahan Momentum
+### Perubahan Speed
 
-- Perfect menambah Momentum secara signifikan.
-- Good mempertahankan ritme dan memberi tambahan kecil.
-- Miss mengurangi Momentum, tetapi karakter tetap bergerak.
-- Momentum turun secara pasif selama race agar pemain harus terus menjaga performa.
+- Semua pemain mulai pada tier Normal.
+- Tiga Perfect berturut-turut menaikkan Speed satu tier.
+- Perfect langsung memberi multiplier **2× selama 3 detik**.
+- Good langsung memberi multiplier **1,5× selama 3 detik**.
+- Good tidak mengubah tier, tetapi mengembalikan Perfect Streak ke 0.
+- Miss menurunkan Speed satu tier, mengembalikan streak ke 0, dan menghentikan chain.
+- Miss langsung membatalkan boost aktif.
+- Speed tidak turun secara pasif.
+- Miss pada tier Normal tidak menurunkan Speed lagi.
 
-### Nilai awal decay
+Perfect atau Good baru akan mengganti multiplier aktif dan mengulang durasinya dari 3 detik.
 
-```text
-Passive Decay = 2 Momentum per detik
-```
+| Tier | Speed | Durasi prompt |
+|---|---:|---:|
+| Normal | 32 studs/detik | 1,20 detik |
+| Fast | 36 studs/detik | 0,95 detik |
+| Rush | 40 studs/detik | 0,75 detik |
+| On Fire | 44 studs/detik | 0,60 detik |
 
-Decay berhenti ketika race selesai.
-
-### Konversi ke kecepatan
-
-Gunakan interpolasi linear sebagai versi awal:
-
-```text
-Speed = MinSpeed + (Momentum / 100) × (MaxSpeed - MinSpeed)
-```
-
-Dengan nilai awal:
-
-```text
-Speed = 12 + (Momentum / 100) × 8
-```
-
-Contoh:
-
-| Momentum | Kecepatan |
-|---:|---:|
-| 0 | 12 studs/detik |
-| 25 | 14 studs/detik |
-| 50 | 16 studs/detik |
-| 75 | 18 studs/detik |
-| 100 | 20 studs/detik |
-
-### Momentum state
-
-| State | Range | Presentasi |
-|---|---:|---|
-| Low | 0–24 | Hop berat, efek minimal |
-| Normal | 25–59 | Gerakan standar |
-| Fast | 60–84 | Debu lebih kuat, kamera sedikit melebar |
-| On Fire | 85–100 | Trail/efek khusus dan rasa kecepatan maksimum |
-
-State hanya mengubah presentasi. Kecepatan tetap mengikuti nilai Momentum secara kontinu agar transisinya halus.
+Semakin cepat pemain, semakin singkat kesempatan untuk menghindari Miss. Ketika pemain melakukan Miss, tier turun sehingga prompt berikutnya otomatis menjadi lebih mudah.
 
 ---
 
@@ -211,6 +184,7 @@ Setiap input harus menghasilkan feedback dalam waktu secepat mungkin.
 ### Perfect
 
 - Teks `PERFECT!` dengan warna paling menonjol.
+- Speed dan walk animation langsung menjadi 2× selama 3 detik.
 - Bunyi tajam dan memuaskan.
 - Flash/ring singkat pada Reaction Window.
 - Burst debu atau trail pada karakter.
@@ -219,6 +193,7 @@ Setiap input harus menghasilkan feedback dalam waktu secepat mungkin.
 ### Good
 
 - Teks `GOOD`.
+- Speed dan walk animation langsung menjadi 1,5× selama 3 detik.
 - Bunyi feedback yang lebih ringan.
 - Efek visual kecil.
 
@@ -226,8 +201,12 @@ Setiap input harus menghasilkan feedback dalam waktu secepat mungkin.
 
 - Teks `MISS`.
 - Bunyi gagal yang singkat.
-- Momentum bar turun dengan jelas.
-- Karakter sedikit oleng atau kehilangan tenaga, tetapi kontrol tidak dikunci.
+- Speed bar turun dengan jelas.
+- Movement berhenti selama sekitar **0,65 detik**.
+- Untuk prototype, movement dan walk animation berhenti selama recovery tanpa memanipulasi pose karakter.
+- Visual tersungkur akan ditambahkan memakai fall animation khusus, bukan physics atau tween root.
+- Setelah itu karakter langsung kembali bergerak.
+- Miss tidak mengeluarkan pemain dari race dan tidak memberi stun panjang.
 
 ### Prinsip feedback
 
@@ -236,6 +215,24 @@ Setiap input harus menghasilkan feedback dalam waktu secepat mungkin.
 - Camera shake harus sangat ringan dan dapat dikurangi lewat pengaturan aksesibilitas.
 - Hasil tidak boleh bergantung pada warna saja; gunakan teks, bentuk, dan suara.
 
+### Character animation prototype
+
+- Idle: `rbxassetid://92750155061995`
+- Walk/hop visual: `rbxassetid://73682520851433`
+- Fall/Miss: `rbxassetid://105372185107291`
+- Walk animation memakai playback `2×` pada base Speed 32 dan terus mengikuti effective Speed hingga maksimal playback `4×`.
+- Ketika Miss, idle/walk berhenti dan fall animation non-looping dimainkan dengan priority Action.
+- Animation hanya presentasi; server tetap menentukan movement dan hasil race.
+
+### Sound prototype
+
+- `hop`: diputar oleh animation marker `OnHop` pada walk/hop animation.
+- `good`: diputar ketika server memberi verdict Good.
+- `perfect`: diputar ketika server memberi verdict Perfect.
+- `miss`: diputar ketika server memberi verdict Miss.
+- Sound ID dan volume diatur terpusat melalui `GameConfig.sounds`.
+- Sound ID dibiarkan kosong sampai asset final dipilih.
+
 ---
 
 ## 8. Race Rules
@@ -243,8 +240,13 @@ Setiap input harus menghasilkan feedback dalam waktu secepat mungkin.
 ### Start
 
 - Semua pemain ditempatkan di garis start.
-- Countdown `3–2–1–GO` mengunci pergerakan sampai `GO`.
-- Semua pemain mulai dengan Momentum yang sama, yaitu 30.
+- Sebelum race, pemain menunggu selama 30 detik di lobby.
+- Track berikutnya dipilih secara acak tanpa pengulangan langsung dan sudah di-clone ke
+  `Workspace.ActiveTrack` selama waktu tunggu lobby.
+- Timer lobby menggunakan `StarterGui.Timer.Frame.LocationTile.Bottom.Countdown`.
+- Setelah masuk lane, `RaceTimer` menjalankan countdown 10 detik: `Bersedia`, `Siap`, lalu
+  `Mulai!`. Pergerakan tetap terkunci sampai `Mulai!` selesai ditampilkan.
+- Semua pemain mulai dengan Speed yang sama, yaitu 32 studs/detik.
 
 ### Selama race
 
@@ -265,7 +267,7 @@ Jika dua pemain tercatat finish pada frame/server tick yang sama, urutan ditentu
 
 1. Waktu finish dengan presisi tertinggi yang tersedia.
 2. Progress melewati garis finish pada tick tersebut.
-3. Momentum saat finish.
+3. Speed saat finish.
 
 ---
 
@@ -283,7 +285,7 @@ Finished
 Results
 ```
 
-| State | Auto-hop | Input timing | Momentum decay |
+| State | Auto movement | Input timing | Perubahan Speed |
 |---|---:|---:|---:|
 | Waiting | Tidak | Tidak | Tidak |
 | Countdown | Tidak | Tidak | Tidak |
@@ -299,12 +301,12 @@ State harus menjadi sumber kebenaran agar input atau movement tidak tetap aktif 
 
 Untuk menjaga kompetisi tetap adil:
 
-- Server menjadi sumber kebenaran untuk state race, Momentum, progress, dan hasil finish.
+- Server menjadi sumber kebenaran untuk state race, Speed, progress, dan hasil finish.
 - Client menangani UI, animasi, audio, dan mengirim waktu input ke server.
 - Server memvalidasi bahwa input terjadi pada Reaction Window yang aktif dan belum pernah dipakai.
 - Input rate dibatasi untuk mencegah spam atau exploit.
 - Toleransi latency perlu diterapkan secara terbatas berdasarkan timing window yang server kirim ke client.
-- Client tidak boleh menentukan sendiri hasil Perfect, perubahan Momentum, atau posisi akhir.
+- Client tidak boleh menentukan sendiri hasil Perfect, perubahan Speed, atau posisi akhir.
 
 Prototype lokal boleh dibuat lebih dahulu, tetapi struktur sistem harus tetap memungkinkan validasi server tanpa menulis ulang seluruh mechanic.
 
@@ -315,11 +317,12 @@ Prototype lokal boleh dibuat lebih dahulu, tetapi struktur sistem harus tetap me
 ### Wajib ada
 
 - Satu jalur race lurus atau spline sederhana.
-- Auto-hop dari start sampai finish.
+- Auto movement di tanah dari start sampai finish.
 - Satu input lintas mobile, PC, dan gamepad.
 - Reaction Window dengan Perfect, Good, dan Miss.
-- Momentum `0–100`, passive decay, dan pengaruhnya terhadap speed.
-- Momentum bar, jarak tersisa, dan feedback hasil.
+- Empat Speed Tier dan durasi prompt per tier.
+- Rhythm Chain berisi 1–3 prompt.
+- Speed bar, Perfect Streak, jarak tersisa, dan feedback hasil.
 - Countdown, finish detection, waktu finish, dan urutan pemain.
 - Minimal dua pemain untuk menguji rasa kompetitif.
 
@@ -340,14 +343,18 @@ Prototype lokal boleh dibuat lebih dahulu, tetapi struktur sistem harus tetap me
 Core mechanic dinyatakan siap masuk tahap berikutnya jika:
 
 - [ ] Pemain dapat menyelesaikan race tanpa input gerak manual.
-- [ ] Auto-hop tetap stabil pada seluruh range Momentum.
+- [ ] Karakter bergerak di tanah tanpa physics jump.
 - [ ] Setiap Reaction Window hanya menghasilkan satu verdict.
-- [ ] Indikator tetap pada satu posisi dan hanya memakai animasi visual ringan.
+- [ ] Posisi indikator berubah pada setiap prompt dan tetap berada di safe area.
+- [ ] Indikator hanya menampilkan lingkaran dan `ImageLabel` icon placeholder.
+- [ ] Indikator melakukan pop, pulse, lalu jatuh natural ketika ditekan.
 - [ ] Perfect, Good, dan Miss sesuai dengan waktu reaksi yang ditentukan.
 - [ ] Tidak menekan tombol menghasilkan Miss.
 - [ ] Spam atau menahan tombol tidak memberi keuntungan.
-- [ ] Momentum tidak pernah kurang dari 0 atau lebih dari 100.
-- [ ] Perubahan Momentum menghasilkan perubahan speed yang terasa dan halus.
+- [ ] Tiga Perfect beruntun menaikkan satu Speed Tier.
+- [ ] Good mereset streak tanpa mengubah Speed Tier.
+- [ ] Miss menurunkan satu Speed Tier dan menghentikan chain.
+- [ ] Durasi prompt semakin pendek pada Speed Tier yang lebih tinggi.
 - [ ] Dua pemain dengan performa timing berbeda menghasilkan posisi race yang berbeda secara konsisten.
 - [ ] Server menentukan hasil mechanic dan finish secara konsisten.
 - [ ] UI dapat dimainkan dengan nyaman pada layar mobile.
@@ -364,7 +371,7 @@ Catat data berikut untuk setiap race:
 - Durasi race.
 - Jumlah Reaction Window.
 - Jumlah dan persentase Perfect, Good, dan Miss.
-- Momentum rata-rata dan tertinggi.
+- Speed rata-rata dan tertinggi.
 - Selisih waktu antara posisi pertama dan terakhir.
 - Jumlah input di luar window.
 - Platform dan perkiraan latency pemain.
@@ -384,9 +391,9 @@ Catat data berikut untuk setiap race:
 ## 14. Urutan Pengerjaan
 
 1. Buat jalur, progress tracking, start, dan finish.
-2. Implementasikan movement auto-hop tanpa Momentum.
+2. Implementasikan forward movement di tanah pada base Speed.
 3. Tambahkan Reaction Window dan verdict timing.
-4. Tambahkan Momentum dan hubungkan ke speed serta interval hop.
+4. Tambahkan Rhythm Chain, Perfect Streak, dan Speed Tier.
 5. Tambahkan UI dan feedback dasar.
 6. Pindahkan validasi penting ke server dan uji dengan dua pemain.
 7. Lakukan playtest dan tuning angka.
@@ -398,9 +405,9 @@ Catat data berikut untuk setiap race:
 
 Hal berikut tidak perlu diputuskan sebelum prototype pertama, tetapi harus dijawab melalui playtest:
 
-- Apakah Good sebaiknya memberi sedikit Momentum atau benar-benar netral?
-- Apakah passive decay sebesar 2 per detik terlalu agresif?
-- Apakah durasi Reaction Window perlu menjadi lebih singkat saat Momentum tinggi?
+- Apakah tiga Perfect per kenaikan tier terasa terlalu cepat atau terlalu lambat?
+- Apakah chain sepanjang 1–3 prompt cukup bervariasi?
+- Apakah durasi prompt 1,20–0,60 detik masih terasa adil?
 - Apakah semua pemain harus mendapat jadwal event yang identik?
 - Seberapa besar efek latency compensation yang masih terasa adil?
 - Apakah pemain yang tertinggal membutuhkan comeback mechanic, atau performa timing saja sudah cukup?

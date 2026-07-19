@@ -11,6 +11,22 @@
         "$path": "src/shared"
       }
     },
+    "ServerStorage": {
+      "$className": "ServerStorage",
+      "$ignoreUnknownInstances": true,
+      "Tracks": {
+        "$className": "Folder",
+        "$ignoreUnknownInstances": true
+      }
+    },
+    "Workspace": {
+      "$className": "Workspace",
+      "$ignoreUnknownInstances": true,
+      "ActiveTrack": {
+        "$className": "Folder",
+        "$ignoreUnknownInstances": true
+      }
+    },
     "StarterPlayer": {
       "$className": "StarterPlayer",
       "StarterPlayerScripts": {

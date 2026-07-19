@@ -10,7 +10,7 @@
 
 Balap Karung bukan game obby.
 
-Balap Karung adalah **reaction racing game**, dimana karakter bergerak otomatis dan pemain harus bereaksi terhadap berbagai action window untuk menjaga momentum dan menjadi yang tercepat mencapai garis finish.
+Balap Karung adalah **reaction racing game**, dimana karakter bergerak otomatis dan pemain harus bereaksi terhadap berbagai action window untuk meningkatkan speed dan menjadi yang tercepat mencapai garis finish.
 
 Inspirasi gameplay:
 
@@ -50,14 +50,14 @@ Durasi satu match:
 
 Player **tidak mengontrol pergerakan karakter secara langsung.**
 
-Karakter akan otomatis melakukan hop (lompat menggunakan karung).
+Karakter bergerak otomatis di tanah. Gerakan hop balap karung dibuat melalui animation, bukan physics jump.
 
 Player hanya melakukan action ketika muncul **Reaction Window**.
 
 Contoh:
 
 ```
-Auto Hop
+Auto Movement
 
 Hop
 Hop
@@ -75,13 +75,9 @@ Hop
 
 # 4. Core Mechanic
 
-## Auto Hop
+## Auto Movement
 
-Karakter otomatis melompat.
-
-Misalnya setiap:
-
-- 0.8 detik
+Karakter otomatis bergerak maju sesuai Speed Tier. Tidak ada vertical movement dari gameplay code.
 
 Player tidak perlu spam tombol.
 
@@ -96,7 +92,7 @@ Contoh:
 ```
       ⚡
 
- TAP
+  ★
 ```
 
 Player harus menekan tombol saat timing yang tepat.
@@ -105,25 +101,38 @@ Hasilnya:
 
 ### Perfect
 
-- Momentum bertambah
-- Speed meningkat
+- Perfect Streak bertambah
+- Tiga Perfect beruntun menaikkan Speed Tier
+- Speed menjadi 2× selama 3 detik
 - Animasi lebih smooth
 - Efek visual muncul
 
 ### Good
 
-- Tidak berubah
+- Speed Tier tetap
+- Perfect Streak kembali ke 0
+- Speed menjadi 1,5× selama 3 detik
 
 ### Miss
 
-- Momentum berkurang
-- Sedikit kehilangan kecepatan
+- Speed berkurang
+- Boost aktif dibatalkan
+- Rhythm Chain langsung berhenti
+- Movement berhenti singkat; visual jatuh menunggu animation khusus
 
 ---
 
-# 5. Momentum System
+# 5. Speed System
 
-Momentum menentukan kecepatan balapan.
+Speed adalah kecepatan maju karakter dan ditampilkan langsung kepada pemain.
+
+Speed menggunakan empat tier: Normal, Fast, Rush, dan On Fire. Semakin tinggi tier, karakter semakin cepat tetapi Reaction Window semakin singkat.
+
+Setiap prompt muncul pada posisi layar yang acak. Perfect dan Good memberi multiplier Speed sementara agar dampak input langsung terlihat.
+
+Prompt hanya menampilkan lingkaran dengan `ImageLabel` icon. Lingkaran melakukan pop dan pulse ketika muncul, lalu jatuh ke bawah layar secara natural setelah ditekan.
+
+Sound hop disinkronkan melalui animation marker `OnHop`. Good, Perfect, dan Miss memiliki sound feedback masing-masing.
 
 Contoh:
 
@@ -147,10 +156,10 @@ Miss
 ███████
 ```
 
-Semakin tinggi Momentum:
+Semakin tinggi Speed Tier:
 
-- Hop lebih cepat
 - Speed meningkat
+- Tombol lebih cepat menghilang
 - Efek debu bertambah
 - Kamera sedikit zoom out
 - Terasa "On Fire"
@@ -297,7 +306,7 @@ Finish
 
 Efek:
 
-- Momentum cepat turun
+- Speed cepat turun
 - Window muncul lebih cepat
 
 ---
@@ -314,7 +323,7 @@ Efek:
 
 Efek:
 
-- Momentum cepat habis
+- Speed turun selama menanjak
 
 ---
 
@@ -322,7 +331,7 @@ Efek:
 
 Efek:
 
-- Momentum bertambah
+- Speed bertambah
 - Namun Miss akan lebih berbahaya
 
 ---
@@ -351,7 +360,7 @@ Jika terkena:
 
        ⚡
 
-      [ TAP ]
+       ( ★ )
 
 ---------------------------------
 ```
@@ -429,9 +438,9 @@ Reward:
 
 ## Gameplay
 
-- Auto Hop
+- Auto Movement
 - Reaction Window
-- Momentum
+- Speed
 - Finish Line
 
 ---
