@@ -166,7 +166,9 @@ mengubah tempo Reaction Window tanpa mengubah movement Speed.
 - On Fire meningkatkan movement menjadi 44 studs/detik.
 - Early atau Miss mengembalikan progress ke 0, mematikan On Fire, dan menghentikan chain.
 - Good memberi multiplier 1,5× dan Perfect 2× selama 3 detik.
-- Setelah burst habis, On Fire mempertahankan base Speed 44 selama pemain tidak Miss.
+- On Fire aktif selama 8 detik dan tidak diperpanjang oleh input berikutnya.
+- Selama On Fire, SpeedDisplay terkuras secara linear dari penuh menuju nol.
+- Ketika durasi berakhir, progress kembali 0, tempo kembali Standard, dan base Speed kembali 32.
 
 | Stage | Progress | Speed | Durasi prompt | Interval chain |
 |---|---:|---:|---:|---:|
@@ -176,6 +178,34 @@ mengubah tempo Reaction Window tanpa mengubah movement Speed.
 
 Efek kamera On Fire memakai transisi FOV dari 70 ke 88 dan vignette tipis. Blur tidak digunakan agar
 track tetap jelas dibaca.
+
+### Tap Barrier
+
+Obstacle jalan raya memakai tiga Reaction Window yang muncul secara staggered dan saling overlap:
+
+```text
+0,00 detik: Prompt 1
+0,32 detik: Prompt 2, sementara Prompt 1 masih aktif
+0,64 detik: Prompt 3, sementara prompt sebelumnya masih dapat aktif
+```
+
+- Setiap ring mempunyai event ID, waktu, animasi, dan verdict sendiri.
+- Input Space/Gamepad selalu memproses prompt aktif paling lama (FIFO).
+- Mobile mengirim event ID dari tombol yang benar-benar disentuh.
+- Ketiga verdict harus Good atau Perfect agar obstacle berhasil.
+- Hasil diklasifikasikan menjadi Triple Good, Mixed, atau Triple Perfect.
+- Triple Good memberi 1,75×, Mixed 2×, dan Triple Perfect 2,25× selama 4 detik.
+- Combo berhasil mengaktifkan Guard sampai pemain menyentuh BarrierPart.
+- Client melakukan raycast Guard ke BarrierPart agar impact tampil tanpa menunggu round-trip server.
+- Guard membuat pemain tetap menerobos tanpa melompat; client langsung membuat physics debris lokal,
+  melemparkannya ke sisi luar track, dan memainkan SFX swing.
+- Server memvalidasi Guard serta jaraknya, lalu broadcast impact untuk ditampilkan client lain.
+- Guard debris tidak bertabrakan dengan racer, tetapi kembali bertabrakan dengan lingkungan setelah
+  menjauh dari karakter.
+- BarrierPart selalu non-collision. Jika combo gagal, bounds hitbox badan karakter mendeteksi overlap
+  langsung dengan cone (bukan raycast Guard), lalu server memvalidasi sebelum memicu Miss/fall.
+- Progress server menjadi fallback jika event collision client hilang.
+- Early atau Miss pada salah satu ring menggagalkan combo dan memakai recovery Miss.
 
 ### Race Tracker
 
@@ -382,7 +412,8 @@ Core mechanic dinyatakan siap masuk tahap berikutnya jika:
 - [ ] Progress 3 mengaktifkan tempo yang lebih cepat.
 - [ ] Progress 5 mengaktifkan On Fire dan Speed 44.
 - [ ] Miss mereset progress, mematikan On Fire, dan menghentikan chain.
-- [ ] SpeedDisplay terisi dari 0 sampai 10 dan efek kamera mengikuti attribute `OnFire`.
+- [ ] SpeedDisplay terisi dari 0 sampai 5, terkuras selama 8 detik, dan efek kamera mengikuti
+  attribute `OnFire`.
 - [ ] Dua pemain dengan performa timing berbeda menghasilkan posisi race yang berbeda secara konsisten.
 - [ ] Server menentukan hasil mechanic dan finish secara konsisten.
 - [ ] UI dapat dimainkan dengan nyaman pada layar mobile.

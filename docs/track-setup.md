@@ -116,6 +116,35 @@ gameplay.
 - Countdown hanya berjalan selama minimal dua pemain berada di dalam gabungan seluruh StartPart.
 - Attribute `InStartArea` pada Player dan `PlayersInStartArea` pada Workspace tersedia untuk debug.
 
+## Tap Barrier
+
+Untuk menambahkan obstacle triple-tap, buat struktur berikut di dalam Model track aktif:
+
+```text
+Barrier01 [Model, tag: TapBarrier]
+├── PromptTrigger [BasePart]
+└── BarrierPart [BasePart]
+```
+
+Attributes opsional pada Model `Barrier01`:
+
+| Attribute | Tipe | Default | Fungsi |
+|---|---|---:|---|
+| `BarrierIndex` | Number/String | Nama Model | ID obstacle untuk debug |
+| `LaneIndex` | Number | Wajib | Lane pemilik obstacle |
+| `TapCount` | Number | 3 | Jumlah prompt obstacle |
+| `ThrowSide` | Number | 1 | Arah lempar lateral: `1` atau `-1` |
+| `ImpactLeadStuds` | Number | 16 | Panjang raycast Guard lokal menuju cone |
+
+- Beri tag `TapBarrier` pada Model, bukan pada Part visual.
+- Isi `LaneIndex` yang sama dengan spawn dan MoveTarget lane tersebut.
+- `PromptTrigger` menentukan progress ketika tiga ring mulai dijadwalkan.
+- `BarrierPart` adalah visual cone/barrier yang dilempar ketika Guard berhasil.
+- Urutan sepanjang arah lane harus `PromptTrigger -> BarrierPart`.
+- Seluruh BasePart di dalam Model dibuat non-collision saat runtime agar racer tidak tersangkut.
+- Dengan effective speed yang dapat mendekati 99 studs/detik setelah Triple Perfect, letakkan
+  PromptTrigger sekitar 185–200 studs sebelum BarrierPart sebagai titik awal playtest.
+
 Attributes runtime berikut tersedia pada `Workspace` untuk debugging:
 
 - `ActiveTrackId`

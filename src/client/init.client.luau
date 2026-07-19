@@ -6,6 +6,7 @@ local ReactRoblox = require(ReplicatedStorage.Packages.ReactRoblox)
 local App = require(script.App)
 local CharacterAnimationController = require(script.CharacterAnimationController)
 local DynamicScaleController = require(script.DynamicScaleController)
+local GuardController = require(script.GuardController)
 local LobbyTimerController = require(script.LobbyTimerController)
 local OnFireController = require(script.OnFireController)
 local RaceTimerController = require(script.RaceTimerController)
@@ -19,6 +20,11 @@ local reactionRemote = remotes:WaitForChild("ReactionWindow")
 print(`[{GameConfig.projectName}] Client initialized`)
 
 SoundController.Start(reactionRemote)
+GuardController.Start(
+	remotes:WaitForChild("SubmitGuardImpact"),
+	remotes:WaitForChild("GuardImpact"),
+	remotes:WaitForChild("SubmitObstacleCrash")
+)
 CharacterAnimationController.Start()
 DynamicScaleController.Start()
 LobbyTimerController.Start()

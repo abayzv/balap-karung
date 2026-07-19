@@ -1,4 +1,7 @@
 local GameConfig = {
+	TEST_MODE = true,
+	TEST_TRACK_ID = "Road",
+	TEST_COUNTDOWN = 5,
 	projectName = "BalapKarung",
 	race = {
 		minimumPlayers = 2,
@@ -32,6 +35,7 @@ local GameConfig = {
 	speed = {
 		normalValue = 32,
 		onFireValue = 44,
+		onFireDurationSeconds = 8,
 		boostDurationSeconds = 3,
 		verdictMultiplier = {
 			Perfect = 2,
@@ -67,6 +71,35 @@ local GameConfig = {
 			transitionSeconds = 0.85,
 		},
 	},
+	obstacle = {
+		tag = "TapBarrier",
+		triggerPartName = "PromptTrigger",
+		barrierPartName = "BarrierPart",
+		tapCount = 3,
+		promptSpawnGapSeconds = 0.32,
+		reactionDurationSeconds = 1,
+		promptMinimumDistance = 0.2,
+		promptPositionAttempts = 40,
+		normalPromptBufferSeconds = 1,
+		guardRaycastDistanceStuds = 16,
+		guardServerValidationDistanceStuds = 24,
+		guardServerFallbackStuds = 8,
+		guardCrashLeadStuds = 3,
+		characterCrashHitboxSize = Vector3.new(4, 5, 3.5),
+		characterCrashHitboxForwardOffsetStuds = 0.5,
+		guardReplicationHideDelaySeconds = 0.15,
+		guardDebrisLifetimeSeconds = 4,
+		guardThrowHorizontalSpeed = 70,
+		guardThrowVerticalSpeed = 34,
+		guardThrowForwardSpeed = 16,
+		guardCollisionDelaySeconds = 0.12,
+		comboBoostDurationSeconds = 4,
+		comboMultiplier = {
+			TripleGood = 1.75,
+			Mixed = 2,
+			TriplePerfect = 2.25,
+		},
+	},
 	reactionWindow = {
 		earlyEndRatio = 0.55,
 		perfectStartRatio = 0.7,
@@ -88,6 +121,12 @@ local GameConfig = {
 		fallPlaybackSpeed = 1,
 		hopMarkerName = "OnHop",
 	},
+	effects = {
+		hopDebrisTemplateName = "Debris",
+		hopDebrisDefaultEmitCount = 8,
+		guardShieldTemplateName = "Shield",
+		guardShieldAttribute = "BalapKarungGuardShield",
+	},
 	sounds = {
 		backgroundMusic = {
 			soundId = "rbxassetid://108881053322600",
@@ -108,6 +147,10 @@ local GameConfig = {
 		miss = {
 			soundId = "rbxassetid://112094436418581",
 			volume = 0.8,
+		},
+		guardSwing = {
+			soundId = "rbxassetid://9120888980",
+			volume = 0.9,
 		},
 		onFireEnter = {
 			soundId = "rbxassetid://130422645188028",

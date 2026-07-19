@@ -10,68 +10,218 @@ local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 
 local e = React.createElement
 
-local function App(props)
-	local reaction, setReaction = React.useState(nil)
-	local feedback, setFeedback = React.useState(nil)
-	local reactionToken = React.useRef(0)
-	local feedbackToken = React.useRef(0)
-	local lastReactionPosition = React.useRef({ x = 0.5, y = 0.5 })
+local function ReactionButton(props)
 	local timingScaleRef = React.useRef(nil)
+	local reaction = props.reaction
+
+	React.useEffect(function()
+		local scale = timingScaleRef.current
+		local timingTween
+		if scale then
+			local now = Workspace:GetServerTimeNow()
+			local elapsedRatio = math.clamp((now - reaction.opensAt) / reaction.duration, 0, 1)
+			scale.Scale = 0.42 + 0.76 * elapsedRatio
+			timingTween = TweenService:Create(
+				scale,
+				TweenInfo.new(math.max(0.01, reaction.expiresAt - now), Enum.EasingStyle.Linear),
+				{ Scale = 1.18 }
+			)
+			timingTween:Play()
+		end
+
+		return function()
+			if timingTween then
+				timingTween:Cancel()
+			end
+		end
+	end, { reaction })
+
+	return e("TextButton", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		AutoButtonColor = false,
+		BackgroundTransparency = 1,
+		Interactable = true,
+		Position = UDim2.fromScale(reaction.screenX, reaction.screenY),
+		Size = UDim2.fromOffset(132, 132),
+		Text = "",
+		[React.Event.Activated] = function()
+			props.onSubmit(reaction.id)
+		end,
+	}, {
+		Target = e("Frame", {
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			BackgroundTransparency = 1,
+			Position = UDim2.fromScale(0.5, 0.5),
+			Size = UDim2.fromOffset(112, 112),
+		}, {
+			Corner = e("UICorner", { CornerRadius = UDim.new(1, 0) }),
+			Glow = e("UIStroke", {
+				Color = Color3.fromRGB(255, 225, 92),
+				Thickness = 7,
+				Transparency = 0.28,
+			}),
+		}),
+		TapCore = e("Frame", {
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+			Position = UDim2.fromScale(0.5, 0.5),
+			Size = UDim2.fromOffset(112, 112),
+			ZIndex = 2,
+		}, {
+			Corner = e("UICorner", { CornerRadius = UDim.new(1, 0) }),
+			Gradient = e("UIGradient", {
+				Color = ColorSequence.new({
+					ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 82, 82)),
+					ColorSequenceKeypoint.new(1, Color3.fromRGB(130, 0, 16)),
+				}),
+				Rotation = 90,
+			}),
+			Scale = e("UIScale", {
+				Scale = 0.42,
+				ref = timingScaleRef,
+			}),
+			Stroke = e("UIStroke", {
+				Color = Color3.fromRGB(255, 182, 182),
+				Thickness = 3,
+			}),
+			Icon = e("ImageLabel", {
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				BackgroundTransparency = 1,
+				Image = GameConfig.ui.reactionIcon,
+				ImageColor3 = Color3.fromRGB(255, 255, 255),
+				Position = UDim2.fromScale(0.5, 0.5),
+				ScaleType = Enum.ScaleType.Fit,
+				Size = UDim2.fromScale(0.56, 0.56),
+				ZIndex = 3,
+			}),
+		}),
+	})
+end
+
+local function feedbackColor(text)
+	if text == "PERFECT" or text == "TRIPLE PERFECT" then
+		return Color3.fromRGB(255, 221, 61)
+	elseif text == "EARLY" then
+		return Color3.fromRGB(255, 151, 54)
+	elseif text == "MISS" then
+		return Color3.fromRGB(255, 72, 72)
+	elseif text == "MIXED COMBO" then
+		return Color3.fromRGB(255, 177, 72)
+	end
+	return Color3.fromRGB(255, 255, 255)
+end
+
+local function comboText(verdict)
+	if verdict == "TriplePerfect" then
+		return "TRIPLE PERFECT"
+	elseif verdict == "TripleGood" then
+		return "TRIPLE GOOD"
+	end
+	return "MIXED COMBO"
+end
+
+local function App(props)
+	local reactions, setReactions = React.useState({})
+	local reactionsRef = React.useRef({})
+	local feedback, setFeedback = React.useState(nil)
+	local reactionTokens = React.useRef({})
+	local reactionPositions = React.useRef({})
+	local feedbackToken = React.useRef(0)
 	local feedbackLabelRef = React.useRef(nil)
+
+	local function removeReaction(id)
+		reactionTokens.current[id] = (reactionTokens.current[id] or 0) + 1
+		if reactionsRef.current[id] then
+			local nextReactions = table.clone(reactionsRef.current)
+			nextReactions[id] = nil
+			reactionsRef.current = nextReactions
+		end
+		setReactions(function(current)
+			if not current[id] then
+				return current
+			end
+			local nextReactions = table.clone(current)
+			nextReactions[id] = nil
+			return nextReactions
+		end)
+	end
+
+	local function clearReactions()
+		for id in reactionTokens.current do
+			reactionTokens.current[id] = (reactionTokens.current[id] or 0) + 1
+		end
+		reactionsRef.current = {}
+		setReactions({})
+	end
+
+	local function showFeedback(text, startX, startY, fallsToSpeedDisplay)
+		feedbackToken.current += 1
+		setFeedback({
+			id = feedbackToken.current,
+			text = text,
+			startX = startX,
+			startY = startY,
+			fallsToSpeedDisplay = fallsToSpeedDisplay,
+		})
+	end
 
 	React.useEffect(function()
 		local connection = props.reactionRemote.OnClientEvent:Connect(function(payload)
-			reactionToken.current += 1
-			local token = reactionToken.current
-
 			if payload.action == "show" then
-				lastReactionPosition.current = {
-					x = payload.screenX,
-					y = payload.screenY,
-				}
+				local id = payload.id
+				reactionTokens.current[id] = (reactionTokens.current[id] or 0) + 1
+				local token = reactionTokens.current[id]
+				reactionPositions.current[id] = { x = payload.screenX, y = payload.screenY }
 				local delaySeconds = math.max(0, payload.opensAt - Workspace:GetServerTimeNow())
 				task.delay(delaySeconds, function()
-					if reactionToken.current ~= token then
+					if reactionTokens.current[id] ~= token then
 						return
 					end
-
-					setReaction({
-						id = payload.id,
+					local reaction = {
+						id = id,
 						opensAt = payload.opensAt,
 						duration = payload.duration,
 						expiresAt = payload.opensAt + payload.duration,
-						chainIndex = payload.chainIndex,
-						chainLength = payload.chainLength,
 						screenX = payload.screenX,
 						screenY = payload.screenY,
-					})
-
-					local remainingDuration = math.max(
-						0,
-						payload.opensAt + payload.duration - Workspace:GetServerTimeNow()
-					)
-					task.delay(remainingDuration, function()
-						if reactionToken.current == token then
-							setReaction(function()
-								return nil
-							end)
-						end
+						obstacle = payload.obstacle == true,
+					}
+					local currentReactions = table.clone(reactionsRef.current)
+					currentReactions[id] = reaction
+					reactionsRef.current = currentReactions
+					setReactions(function(current)
+						local nextReactions = table.clone(current)
+						nextReactions[id] = reaction
+						return nextReactions
 					end)
+					task.delay(
+						math.max(0, reaction.expiresAt - Workspace:GetServerTimeNow()),
+						function()
+							if reactionTokens.current[id] == token then
+								removeReaction(id)
+							end
+						end
+					)
 				end)
+			elseif payload.action == "remove" or payload.action == "obstacleVerdict" then
+				removeReaction(payload.id)
 			elseif payload.action == "result" then
-				setReaction(nil)
-				feedbackToken.current += 1
-				setFeedback({
-					id = feedbackToken.current,
-					text = string.upper(payload.verdict),
-					startX = lastReactionPosition.current.x,
-					startY = lastReactionPosition.current.y,
-					fallsToSpeedDisplay = payload.verdict == "Good" or payload.verdict == "Perfect",
-				})
+				if payload.id then
+					removeReaction(payload.id)
+				else
+					clearReactions()
+				end
+				local position = reactionPositions.current[payload.id] or { x = 0.5, y = 0.5 }
+				showFeedback(
+					string.upper(payload.verdict),
+					position.x,
+					position.y,
+					payload.verdict == "Good" or payload.verdict == "Perfect"
+				)
+			elseif payload.action == "comboResult" then
+				showFeedback(comboText(payload.verdict), 0.5, 0.3, false)
 			else
-				setReaction(function()
-					return nil
-				end)
+				clearReactions()
 			end
 		end)
 
@@ -111,7 +261,7 @@ local function App(props)
 		local tween = TweenService:Create(
 			label,
 			TweenInfo.new(
-				if feedback.fallsToSpeedDisplay then 0.62 else 0.45,
+				if feedback.fallsToSpeedDisplay then 0.62 else 0.7,
 				Enum.EasingStyle.Quad,
 				if feedback.fallsToSpeedDisplay
 					then Enum.EasingDirection.In
@@ -135,142 +285,74 @@ local function App(props)
 		end
 	end, { feedback })
 
-	React.useEffect(function()
-		if not reaction then
-			return
-		end
-
-		local scale = timingScaleRef.current
-		local timingTween
-
-		if scale then
-			local now = Workspace:GetServerTimeNow()
-			local elapsedRatio = math.clamp((now - reaction.opensAt) / reaction.duration, 0, 1)
-			scale.Scale = 0.42 + 0.76 * elapsedRatio
-			timingTween = TweenService:Create(
-				scale,
-				TweenInfo.new(math.max(0.01, reaction.expiresAt - now), Enum.EasingStyle.Linear),
-				{ Scale = 1.18 }
-			)
-			timingTween:Play()
-		end
-
-		return function()
-			if timingTween then
-				timingTween:Cancel()
-			end
-		end
-	end, { reaction })
-
-	local function submitReaction()
+	local function submitReaction(id)
+		local reaction = reactionsRef.current[id]
 		if not reaction or Workspace:GetServerTimeNow() > reaction.expiresAt then
 			return
 		end
-
-		reactionToken.current += 1
-		props.submitRemote:FireServer(reaction.id, Workspace:GetServerTimeNow())
-		setReaction(nil)
+		props.submitRemote:FireServer(id, Workspace:GetServerTimeNow())
+		removeReaction(id)
 	end
 
 	React.useEffect(function()
-		if not reaction then
-			ContextActionService:UnbindAction("BalapKarungSubmitReaction")
-			return
-		end
-
 		ContextActionService:BindAction("BalapKarungSubmitReaction", function(_, inputState)
 			if inputState == Enum.UserInputState.Begin then
-				submitReaction()
+				local oldestReaction = nil
+				local oldestObstacleReaction = nil
+				for _, reaction in reactionsRef.current do
+					if not oldestReaction or reaction.opensAt < oldestReaction.opensAt then
+						oldestReaction = reaction
+					end
+					if
+						reaction.obstacle
+						and (
+							not oldestObstacleReaction
+							or reaction.opensAt < oldestObstacleReaction.opensAt
+						)
+					then
+						oldestObstacleReaction = reaction
+					end
+				end
+				local targetReaction = oldestObstacleReaction or oldestReaction
+				if targetReaction then
+					submitReaction(targetReaction.id)
+					return Enum.ContextActionResult.Sink
+				end
 			end
-			return Enum.ContextActionResult.Sink
+			return Enum.ContextActionResult.Pass
 		end, false, Enum.KeyCode.Space, Enum.KeyCode.ButtonA)
 
 		return function()
 			ContextActionService:UnbindAction("BalapKarungSubmitReaction")
 		end
-	end, { reaction })
+	end, { props.submitRemote })
 
-	return e("Frame", {
-		BackgroundTransparency = 1,
-		Size = UDim2.fromScale(1, 1),
-	}, {
+	local children = {
 		Feedback = feedback and e("TextLabel", {
 			AnchorPoint = Vector2.new(0.5, 0.5),
 			BackgroundTransparency = 1,
 			Font = Enum.Font.GothamBlack,
 			Position = UDim2.fromScale(feedback.startX, feedback.startY),
-			Size = UDim2.fromOffset(220, 64),
+			Size = UDim2.fromOffset(300, 64),
 			Text = feedback.text,
-			TextColor3 = if feedback.text == "PERFECT"
-				then Color3.fromRGB(255, 221, 61)
-				elseif feedback.text == "EARLY" then Color3.fromRGB(255, 151, 54)
-				elseif feedback.text == "MISS" then Color3.fromRGB(255, 72, 72)
-				else Color3.fromRGB(255, 255, 255),
+			TextColor3 = feedbackColor(feedback.text),
 			TextSize = 36,
 			TextStrokeTransparency = 0.4,
 			ref = feedbackLabelRef,
 		}) or nil,
-		Reaction = reaction and e("TextButton", {
-			AnchorPoint = Vector2.new(0.5, 0.5),
-			AutoButtonColor = false,
-			BackgroundTransparency = 1,
-			Interactable = true,
-			Position = UDim2.fromScale(reaction.screenX, reaction.screenY),
-			Rotation = 0,
-			Size = UDim2.fromOffset(132, 132),
-			Text = "",
-			key = tostring(reaction.id),
-			[React.Event.Activated] = submitReaction,
-		}, {
-			Target = e("Frame", {
-				AnchorPoint = Vector2.new(0.5, 0.5),
-				BackgroundTransparency = 1,
-				Position = UDim2.fromScale(0.5, 0.5),
-				Size = UDim2.fromOffset(112, 112),
-			}, {
-				Corner = e("UICorner", { CornerRadius = UDim.new(1, 0) }),
-				Glow = e("UIStroke", {
-					Color = Color3.fromRGB(255, 225, 92),
-					Thickness = 7,
-					Transparency = 0.28,
-				}),
-			}),
-			TapCore = e("Frame", {
-				AnchorPoint = Vector2.new(0.5, 0.5),
-				BackgroundColor3 = Color3.fromRGB(255, 255, 255),
-				Position = UDim2.fromScale(0.5, 0.5),
-				Size = UDim2.fromOffset(112, 112),
-				ZIndex = 2,
-			}, {
-				Corner = e("UICorner", { CornerRadius = UDim.new(1, 0) }),
-				Gradient = e("UIGradient", {
-					Color = ColorSequence.new({
-						ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 82, 82)),
-						ColorSequenceKeypoint.new(1, Color3.fromRGB(130, 0, 16)),
-					}),
-					Rotation = 90,
-				}),
-				Scale = e("UIScale", {
-					Scale = 0.42,
-					ref = timingScaleRef,
-				}),
-				Stroke = e("UIStroke", {
-					Color = Color3.fromRGB(255, 182, 182),
-					Thickness = 3,
-				}),
-				Icon = e("ImageLabel", {
-					AnchorPoint = Vector2.new(0.5, 0.5),
-					BackgroundTransparency = 1,
-					Image = GameConfig.ui.reactionIcon,
-					ImageColor3 = Color3.fromRGB(255, 255, 255),
-					Position = UDim2.fromScale(0.5, 0.5),
-					ScaleType = Enum.ScaleType.Fit,
-					Size = UDim2.fromScale(0.56, 0.56),
-					ZIndex = 3,
-				}),
-			}),
-		}) or nil,
-	})
+	}
+	for id, reaction in reactions do
+		children[`Reaction_{id}`] = e(ReactionButton, {
+			key = tostring(id),
+			reaction = reaction,
+			onSubmit = submitReaction,
+		})
+	end
+
+	return e("Frame", {
+		BackgroundTransparency = 1,
+		Size = UDim2.fromScale(1, 1),
+	}, children)
 end
 
 return App

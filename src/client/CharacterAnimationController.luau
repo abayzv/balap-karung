@@ -1,10 +1,50 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local DebrisService = game:GetService("Debris")
+local Workspace = game:GetService("Workspace")
 
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local SoundController = require(script.Parent.SoundController)
 
 local CharacterAnimationController = {}
+
+local function emitHopDebris(character)
+	local template = ReplicatedStorage:FindFirstChild(GameConfig.effects.hopDebrisTemplateName)
+	local root = character:FindFirstChild("HumanoidRootPart")
+	if not template or not template:IsA("BasePart") or not root then
+		return
+	end
+
+	local raycastParams = RaycastParams.new()
+	raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+	raycastParams.FilterDescendantsInstances = { character }
+	raycastParams.IgnoreWater = false
+	local result = Workspace:Raycast(root.Position, Vector3.new(0, -8, 0), raycastParams)
+	local position = if result then result.Position + Vector3.new(0, 0.05, 0) else root.Position
+
+	local debrisPart = template:Clone()
+	debrisPart.Name = "BalapKarungHopDebris"
+	debrisPart.Anchored = true
+	debrisPart.CanCollide = false
+	debrisPart.CanTouch = false
+	debrisPart.CanQuery = false
+	debrisPart.CastShadow = false
+	debrisPart.Transparency = 1
+	debrisPart.CFrame = CFrame.new(position) * template.CFrame.Rotation
+	debrisPart.Parent = Workspace
+
+	local maximumLifetime = 0
+	for _, descendant in debrisPart:GetDescendants() do
+		if descendant:IsA("ParticleEmitter") then
+			descendant.Enabled = false
+			maximumLifetime = math.max(maximumLifetime, descendant.Lifetime.Max)
+			descendant:Emit(
+				descendant:GetAttribute("EmitCount") or GameConfig.effects.hopDebrisDefaultEmitCount
+			)
+		end
+	end
+	DebrisService:AddItem(debrisPart, maximumLifetime + 0.5)
+end
 
 local function loadTrack(animator, animationId, priority, looped)
 	local animation = Instance.new("Animation")
@@ -71,6 +111,7 @@ function CharacterAnimationController.Start()
 					:GetMarkerReachedSignal(GameConfig.animations.hopMarkerName)
 					:Connect(function()
 						SoundController.Play("hop")
+						emitHopDebris(character)
 					end)
 			)
 		end

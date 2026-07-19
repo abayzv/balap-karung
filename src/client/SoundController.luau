@@ -173,7 +173,17 @@ function SoundController.Start(reactionRemote)
 	end)
 
 	reactionRemote.OnClientEvent:Connect(function(payload)
-		if payload.action ~= "result" then
+		if payload.action == "comboResult" then
+			SoundController.Play(if payload.verdict == "TriplePerfect" then "perfect" else "good")
+			return
+		end
+		if payload.action ~= "result" and payload.action ~= "obstacleVerdict" then
+			return
+		end
+		if
+			payload.action == "obstacleVerdict"
+			and (payload.verdict == "Early" or payload.verdict == "Miss")
+		then
 			return
 		end
 

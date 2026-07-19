@@ -109,6 +109,7 @@ function OnFireController.Start()
 	local playerGui = player:WaitForChild("PlayerGui")
 	local fillValue = Instance.new("NumberValue")
 	local fillTween = nil
+	local onFireDrainTween = nil
 	local fillGradient = nil
 	local displayGui = nil
 	local displayFrame = nil
@@ -132,6 +133,9 @@ function OnFireController.Start()
 	fillValue.Changed:Connect(renderFill)
 
 	local function tweenProgress()
+		if player:GetAttribute("OnFire") == true then
+			return
+		end
 		if fillTween then
 			fillTween:Cancel()
 		end
@@ -203,8 +207,26 @@ function OnFireController.Start()
 			vignettePulse:Cancel()
 			vignettePulse = nil
 		end
+		if onFireDrainTween then
+			onFireDrainTween:Cancel()
+			onFireDrainTween = nil
+		end
 
 		if onFire then
+			if fillTween then
+				fillTween:Cancel()
+			end
+			fillValue.Value = GameConfig.speed.onFireRequiredHits
+			local remainingDuration = math.max(
+				0.01,
+				(player:GetAttribute("OnFireEndsAt") or 0) - Workspace:GetServerTimeNow()
+			)
+			onFireDrainTween = TweenService:Create(
+				fillValue,
+				TweenInfo.new(remainingDuration, Enum.EasingStyle.Linear),
+				{ Value = 0 }
+			)
+			onFireDrainTween:Play()
 			vignette.Visible = true
 			vignette.GroupTransparency = 0.68
 			vignettePulse = TweenService:Create(
@@ -223,6 +245,7 @@ function OnFireController.Start()
 				displayPulse:Play()
 			end
 		else
+			tweenProgress()
 			vignette.Visible = false
 			vignette.GroupTransparency = 1
 			if displayScale then

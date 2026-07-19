@@ -3,6 +3,12 @@ return function()
 	local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 
 	describe("GameConfig", function()
+		it("configures the Road test-mode bypass", function()
+			expect(GameConfig.TEST_MODE).to.equal(true)
+			expect(GameConfig.TEST_TRACK_ID).to.equal("Road")
+			expect(GameConfig.TEST_COUNTDOWN).to.equal(5)
+		end)
+
 		it("uses the BalapKarung project name", function()
 			expect(GameConfig.projectName).to.equal("BalapKarung")
 		end)
@@ -62,6 +68,42 @@ return function()
 			expect(GameConfig.speed.onFireRequiredHits).to.equal(5)
 		end)
 
+		it("gives On Fire a finite duration", function()
+			expect(GameConfig.speed.onFireDurationSeconds).to.equal(8)
+		end)
+
+		it("configures a staggered triple-tap obstacle combo", function()
+			expect(GameConfig.obstacle.tag).to.equal("TapBarrier")
+			expect(GameConfig.obstacle.tapCount).to.equal(3)
+			expect(GameConfig.obstacle.promptSpawnGapSeconds > 0).to.equal(true)
+			expect(
+				GameConfig.obstacle.promptSpawnGapSeconds
+					< GameConfig.obstacle.reactionDurationSeconds
+			).to.equal(true)
+			expect(
+				GameConfig.obstacle.comboMultiplier.TriplePerfect
+					> GameConfig.obstacle.comboMultiplier.Mixed
+			).to.equal(true)
+			expect(
+				GameConfig.obstacle.comboMultiplier.Mixed
+					> GameConfig.obstacle.comboMultiplier.TripleGood
+			).to.equal(true)
+		end)
+
+		it("leaves a quiet window before an obstacle prompt", function()
+			expect(GameConfig.obstacle.normalPromptBufferSeconds >= 1).to.equal(true)
+		end)
+
+		it("configures a physical guard impact", function()
+			expect(GameConfig.obstacle.guardRaycastDistanceStuds > 0).to.equal(true)
+			expect(GameConfig.obstacle.guardServerValidationDistanceStuds > 0).to.equal(true)
+			expect(GameConfig.obstacle.guardCrashLeadStuds > 0).to.equal(true)
+			expect(GameConfig.obstacle.characterCrashHitboxSize.Magnitude > 0).to.equal(true)
+			expect(GameConfig.obstacle.guardThrowHorizontalSpeed > 0).to.equal(true)
+			expect(GameConfig.obstacle.guardThrowVerticalSpeed > 0).to.equal(true)
+			expect(GameConfig.sounds.guardSwing.soundId ~= "").to.equal(true)
+		end)
+
 		it("keeps the temporary Good and Perfect speed boosts", function()
 			expect(GameConfig.speed.verdictMultiplier.Good).to.equal(1.5)
 			expect(GameConfig.speed.verdictMultiplier.Perfect).to.equal(2)
@@ -89,6 +131,12 @@ return function()
 			expect(GameConfig.animations.fall).to.equal("rbxassetid://105372185107291")
 			expect(GameConfig.animations.fallPlaybackSpeed).to.equal(1)
 			expect(GameConfig.animations.hopMarkerName).to.equal("OnHop")
+		end)
+
+		it("configures the hop debris and Guard shield templates", function()
+			expect(GameConfig.effects.hopDebrisTemplateName).to.equal("Debris")
+			expect(GameConfig.effects.guardShieldTemplateName).to.equal("Shield")
+			expect(GameConfig.effects.hopDebrisDefaultEmitCount > 0).to.equal(true)
 		end)
 
 		it("configures a short Miss recovery", function()

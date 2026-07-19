@@ -185,8 +185,7 @@ function TrackService:_readTrack(model)
 	}
 end
 
-function TrackService:ActivateNextTrack()
-	local template = self:_chooseNextTemplate()
+function TrackService:_activateTemplate(template)
 	if not template then
 		return nil,
 			`Masukkan Model bertag {GameConfig.track.tags.track} ke ServerStorage/{GameConfig.track.templatesFolderName}`
@@ -207,6 +206,20 @@ function TrackService:ActivateNextTrack()
 	Workspace:SetAttribute("ActiveTrackName", track.displayName)
 	Workspace:SetAttribute("ActiveTrackLength", track.length)
 	return track
+end
+
+function TrackService:ActivateNextTrack()
+	return self:_activateTemplate(self:_chooseNextTemplate())
+end
+
+function TrackService:ActivateTrackById(trackId)
+	for _, template in self:_getTemplates() do
+		if getTrackId(template) == trackId then
+			return self:_activateTemplate(template)
+		end
+	end
+	return nil,
+		`Track dengan TrackId {trackId} tidak ditemukan di ServerStorage/{GameConfig.track.templatesFolderName}`
 end
 
 return TrackService

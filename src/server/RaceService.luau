@@ -7,11 +7,13 @@ local StarterPlayer = game:GetService("StarterPlayer")
 local Workspace = game:GetService("Workspace")
 
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
+local ObstacleMechanic = require(ReplicatedStorage.Shared.ObstacleMechanic)
 local Reaction = require(ReplicatedStorage.Shared.Reaction)
 local Speed = require(ReplicatedStorage.Shared.Speed)
 local TrackService = require(script.Parent.TrackService)
 
 local RACER_COLLISION_GROUP = "BalapKarungRacers"
+local GUARD_DEBRIS_COLLISION_GROUP = "BalapKarungGuardDebris"
 local ON_FIRE_AURA_ATTRIBUTE = "BalapKarungOnfireAura"
 
 local RaceService = {}
@@ -33,6 +35,7 @@ local function setPlayerDefaults(player)
 	player:SetAttribute("OnFireProgress", 0)
 	player:SetAttribute("TempoStage", 1)
 	player:SetAttribute("OnFire", false)
+	player:SetAttribute("OnFireEndsAt", 0)
 	player:SetAttribute("SpeedMultiplier", 1)
 	player:SetAttribute("EffectiveSpeed", GameConfig.speed.normalValue)
 	player:SetAttribute("BoostEndsAt", 0)
@@ -46,6 +49,11 @@ local function setPlayerDefaults(player)
 	player:SetAttribute("LastVerdict", "")
 	player:SetAttribute("IsRace", false)
 	player:SetAttribute("InStartArea", false)
+	player:SetAttribute("GuardReady", false)
+	player:SetAttribute("LastGuardImpact", "")
+	player:SetAttribute("LastObstacleCombo", "")
+	player:SetAttribute("ObstaclePerfectCount", 0)
+	player:SetAttribute("ObstacleGoodCount", 0)
 end
 
 local function isPointInsidePart(part, point)
@@ -85,6 +93,65 @@ local function getPlayersInStartArea()
 
 	Workspace:SetAttribute("PlayersInStartArea", #queuedPlayers)
 	return queuedPlayers
+end
+
+local function getLaneObstacles(trackModel, lane)
+	local obstacles = {}
+	for _, instance in CollectionService:GetTagged(GameConfig.obstacle.tag) do
+		if
+			instance:IsDescendantOf(trackModel)
+			and instance:GetAttribute("LaneIndex") == lane.index
+		then
+			local trigger = instance:FindFirstChild(GameConfig.obstacle.triggerPartName, true)
+			local barrier = instance:FindFirstChild(GameConfig.obstacle.barrierPartName, true)
+			if trigger and trigger:IsA("BasePart") and barrier and barrier:IsA("BasePart") then
+				local triggerProgress = (trigger.Position - lane.spawn.Position):Dot(lane.forward)
+				local barrierProgress = (barrier.Position - lane.spawn.Position):Dot(lane.forward)
+				local impactLeadStuds = instance:GetAttribute("ImpactLeadStuds")
+					or GameConfig.obstacle.guardRaycastDistanceStuds
+				local impactProgress = barrierProgress - impactLeadStuds
+				local crashProgress = barrierProgress - GameConfig.obstacle.guardCrashLeadStuds
+				if
+					triggerProgress >= 0
+					and impactProgress > triggerProgress
+					and barrierProgress <= lane.length
+				then
+					for _, descendant in instance:GetDescendants() do
+						if descendant:IsA("BasePart") then
+							descendant.CanCollide = false
+						end
+					end
+					barrier.CanQuery = true
+					table.insert(obstacles, {
+						id = instance:GetAttribute("BarrierIndex") or instance.Name,
+						triggerProgress = triggerProgress,
+						barrierProgress = barrierProgress,
+						impactProgress = impactProgress,
+						crashProgress = crashProgress,
+						tapCount = instance:GetAttribute("TapCount")
+							or GameConfig.obstacle.tapCount,
+						barrier = barrier,
+						throwDirection = Vector3.yAxis:Cross(lane.forward)
+							* (instance:GetAttribute("ThrowSide") or 1),
+						started = false,
+						resolved = false,
+						guardArmed = false,
+						guardUsed = false,
+						failed = false,
+						crashed = false,
+					})
+				end
+			else
+				warn(
+					`[BalapKarung] {instance:GetFullName()} membutuhkan {GameConfig.obstacle.triggerPartName} dan {GameConfig.obstacle.barrierPartName}`
+				)
+			end
+		end
+	end
+	table.sort(obstacles, function(left, right)
+		return left.triggerProgress < right.triggerProgress
+	end)
+	return obstacles
 end
 
 local function updateJumpState(player, character)
@@ -175,6 +242,43 @@ local function updateOnFireAura(player, character)
 	end
 end
 
+local function updateGuardShield(player, character)
+	if not character then
+		return
+	end
+
+	local upperTorso = character:FindFirstChild("UpperTorso")
+	if not upperTorso or not upperTorso:IsA("BasePart") then
+		return
+	end
+
+	for _, child in upperTorso:GetChildren() do
+		if child:GetAttribute(GameConfig.effects.guardShieldAttribute) == true then
+			child:Destroy()
+		end
+	end
+
+	if player:GetAttribute("GuardReady") ~= true then
+		return
+	end
+
+	local template = ReplicatedStorage:FindFirstChild(GameConfig.effects.guardShieldTemplateName)
+	if not template or not template:IsA("BasePart") then
+		warn(
+			`[BalapKarung] ReplicatedStorage.{GameConfig.effects.guardShieldTemplateName} tidak ditemukan`
+		)
+		return
+	end
+
+	for _, child in template:GetChildren() do
+		if child:IsA("Attachment") then
+			local attachment = child:Clone()
+			attachment:SetAttribute(GameConfig.effects.guardShieldAttribute, true)
+			attachment.Parent = upperTorso
+		end
+	end
+end
+
 function RaceService.new()
 	local self = setmetatable({}, RaceService)
 	self._raceId = 0
@@ -190,25 +294,50 @@ function RaceService.new()
 end
 
 function RaceService:_createRemotes()
-	local existing = ReplicatedStorage:FindFirstChild("Remotes")
-	if existing then
-		existing:Destroy()
+	local folder = ReplicatedStorage:FindFirstChild("Remotes")
+	if not folder then
+		folder = Instance.new("Folder")
+		folder.Name = "Remotes"
+		folder.Parent = ReplicatedStorage
 	end
 
-	local folder = Instance.new("Folder")
-	folder.Name = "Remotes"
-	folder.Parent = ReplicatedStorage
+	local reactionWindow = folder:FindFirstChild("ReactionWindow")
+	if not reactionWindow then
+		reactionWindow = Instance.new("RemoteEvent")
+		reactionWindow.Name = "ReactionWindow"
+		reactionWindow.Parent = folder
+	end
 
-	local reactionWindow = Instance.new("RemoteEvent")
-	reactionWindow.Name = "ReactionWindow"
-	reactionWindow.Parent = folder
-
-	local submitReaction = Instance.new("RemoteEvent")
-	submitReaction.Name = "SubmitReaction"
-	submitReaction.Parent = folder
+	local submitReaction = folder:FindFirstChild("SubmitReaction")
+	if not submitReaction then
+		submitReaction = Instance.new("RemoteEvent")
+		submitReaction.Name = "SubmitReaction"
+		submitReaction.Parent = folder
+	end
+	local submitGuardImpact = folder:FindFirstChild("SubmitGuardImpact")
+	if not submitGuardImpact then
+		submitGuardImpact = Instance.new("RemoteEvent")
+		submitGuardImpact.Name = "SubmitGuardImpact"
+		submitGuardImpact.Parent = folder
+	end
+	local guardImpact = folder:FindFirstChild("GuardImpact")
+	if not guardImpact then
+		guardImpact = Instance.new("RemoteEvent")
+		guardImpact.Name = "GuardImpact"
+		guardImpact.Parent = folder
+	end
+	local submitObstacleCrash = folder:FindFirstChild("SubmitObstacleCrash")
+	if not submitObstacleCrash then
+		submitObstacleCrash = Instance.new("RemoteEvent")
+		submitObstacleCrash.Name = "SubmitObstacleCrash"
+		submitObstacleCrash.Parent = folder
+	end
 
 	self._reactionWindowRemote = reactionWindow
 	self._submitReactionRemote = submitReaction
+	self._submitGuardImpactRemote = submitGuardImpact
+	self._guardImpactRemote = guardImpact
+	self._submitObstacleCrashRemote = submitObstacleCrash
 end
 
 function RaceService:_setState(state, countdown)
@@ -275,7 +404,8 @@ function RaceService:_prepareRace(eligiblePlayers)
 			table.insert(currentPlayers, player)
 		end
 	end
-	if #currentPlayers < GameConfig.race.minimumPlayers then
+	local minimumPlayers = if GameConfig.TEST_MODE then 1 else GameConfig.race.minimumPlayers
+	if #currentPlayers < minimumPlayers then
 		return false
 	end
 	local random = Random.new(self._raceId * 7919)
@@ -335,12 +465,17 @@ function RaceService:_prepareRace(eligiblePlayers)
 			noMissStreak = 0,
 			tempoStage = 1,
 			onFire = false,
+			onFireEndsAt = 0,
 			speedMultiplier = 1,
 			boostEndsAt = 0,
 			lastReplicationAt = 0,
 			finished = false,
 			recoveringUntil = 0,
 			reaction = nil,
+			obstacleReactions = {},
+			obstacleSequence = nil,
+			activeObstacle = nil,
+			obstacles = getLaneObstacles(activeTrack.model, lane),
 			raceId = self._raceId,
 		}
 	end
@@ -385,32 +520,68 @@ function RaceService:_startMissRecovery(racer)
 	racer.root.AssemblyAngularVelocity = Vector3.zero
 end
 
-function RaceService:_resolveReaction(racer, verdict)
+function RaceService:_expireOnFire(racer)
+	racer.noMissStreak = 0
+	racer.tempoStage = 1
+	racer.onFire = false
+	racer.onFireEndsAt = 0
+	racer.speed = GameConfig.speed.normalValue
+	racer.player:SetAttribute("Speed", racer.speed)
+	racer.player:SetAttribute("NoMissStreak", 0)
+	racer.player:SetAttribute("OnFireProgress", 0)
+	racer.player:SetAttribute("TempoStage", 1)
+	racer.player:SetAttribute("OnFire", false)
+	racer.player:SetAttribute("OnFireEndsAt", 0)
+	racer.player:SetAttribute("EffectiveSpeed", racer.speed * racer.speedMultiplier)
+end
+
+function RaceService:_resolveReaction(racer, verdict, eventId)
 	if racer.finished then
 		return
 	end
+	-- A normal prompt can expire in the same frame that an obstacle sequence starts.
+	-- Once the obstacle owns the input, that stale result must not punish the racer.
+	if eventId ~= nil and racer.activeObstacle then
+		self._reactionWindowRemote:FireClient(racer.player, {
+			action = "remove",
+			id = eventId,
+		})
+		return
+	end
 
+	local now = Workspace:GetServerTimeNow()
 	local wasOnFire = racer.onFire
 	racer.noMissStreak, racer.tempoStage, racer.onFire =
 		Speed.applyVerdict(racer.noMissStreak, verdict)
+	if verdict == "Early" or verdict == "Miss" then
+		racer.onFireEndsAt = 0
+	elseif racer.onFire and not wasOnFire then
+		racer.onFireEndsAt = now + GameConfig.speed.onFireDurationSeconds
+	elseif wasOnFire then
+		racer.onFire = true
+		racer.tempoStage = 3
+		racer.noMissStreak = GameConfig.speed.onFireRequiredHits
+	end
 	racer.speed = Speed.valueForOnFire(racer.onFire)
 	racer.player:SetAttribute("Speed", racer.speed)
 	racer.player:SetAttribute("NoMissStreak", racer.noMissStreak)
 	racer.player:SetAttribute("OnFireProgress", racer.noMissStreak)
 	racer.player:SetAttribute("TempoStage", racer.tempoStage)
+	racer.player:SetAttribute("OnFireEndsAt", racer.onFireEndsAt)
 	racer.player:SetAttribute("OnFire", racer.onFire)
 	racer.player:SetAttribute("LastVerdict", verdict)
 	if verdict == "Early" or verdict == "Miss" then
 		self:_startMissRecovery(racer)
 	else
 		racer.speedMultiplier = GameConfig.speed.verdictMultiplier[verdict]
-		racer.boostEndsAt = Workspace:GetServerTimeNow() + GameConfig.speed.boostDurationSeconds
+		racer.boostEndsAt = now + GameConfig.speed.boostDurationSeconds
 		racer.player:SetAttribute("SpeedMultiplier", racer.speedMultiplier)
 		racer.player:SetAttribute("EffectiveSpeed", racer.speed * racer.speedMultiplier)
 		racer.player:SetAttribute("BoostEndsAt", racer.boostEndsAt)
 	end
 	self._reactionWindowRemote:FireClient(racer.player, {
 		action = "result",
+		id = eventId,
 		verdict = verdict,
 		onFireTriggered = not wasOnFire and racer.onFire,
 		onFireEnded = wasOnFire and not racer.onFire,
@@ -419,10 +590,336 @@ function RaceService:_resolveReaction(racer, verdict)
 	})
 end
 
+function RaceService:_applyObstacleSuccess(racer, sequence, comboVerdict)
+	local now = Workspace:GetServerTimeNow()
+	local wasOnFire = racer.onFire
+	for _, verdict in sequence.results do
+		racer.noMissStreak, racer.tempoStage, racer.onFire =
+			Speed.applyVerdict(racer.noMissStreak, verdict)
+	end
+	if racer.onFire and not wasOnFire then
+		racer.onFireEndsAt = now + GameConfig.speed.onFireDurationSeconds
+	elseif wasOnFire then
+		racer.onFire = true
+		racer.tempoStage = 3
+		racer.noMissStreak = GameConfig.speed.onFireRequiredHits
+	end
+
+	racer.speed = Speed.valueForOnFire(racer.onFire)
+	racer.speedMultiplier = GameConfig.obstacle.comboMultiplier[comboVerdict]
+	racer.boostEndsAt = now + GameConfig.obstacle.comboBoostDurationSeconds
+	racer.player:SetAttribute("Speed", racer.speed)
+	racer.player:SetAttribute("NoMissStreak", racer.noMissStreak)
+	racer.player:SetAttribute("OnFireProgress", racer.noMissStreak)
+	racer.player:SetAttribute("TempoStage", racer.tempoStage)
+	racer.player:SetAttribute("OnFireEndsAt", racer.onFireEndsAt)
+	racer.player:SetAttribute("OnFire", racer.onFire)
+	racer.player:SetAttribute("LastVerdict", comboVerdict)
+	racer.player:SetAttribute("SpeedMultiplier", racer.speedMultiplier)
+	racer.player:SetAttribute("EffectiveSpeed", racer.speed * racer.speedMultiplier)
+	racer.player:SetAttribute("BoostEndsAt", racer.boostEndsAt)
+
+	sequence.obstacle.guardArmed = true
+	sequence.obstacle.resolved = true
+	racer.player:SetAttribute("GuardReady", true)
+	self._reactionWindowRemote:FireClient(racer.player, {
+		action = "comboResult",
+		verdict = comboVerdict,
+		progress = racer.noMissStreak,
+		multiplier = racer.speedMultiplier,
+	})
+end
+
+function RaceService:_finalizeObstacleSequence(racer, sequence)
+	if racer.obstacleSequence ~= sequence then
+		return
+	end
+
+	local comboVerdict =
+		ObstacleMechanic.classifyVerdicts(sequence.results, sequence.obstacle.tapCount)
+	local perfectCount = 0
+	local goodCount = 0
+	for _, verdict in sequence.results do
+		if verdict == "Perfect" then
+			perfectCount += 1
+		elseif verdict == "Good" then
+			goodCount += 1
+		end
+	end
+	racer.player:SetAttribute("ObstaclePerfectCount", perfectCount)
+	racer.player:SetAttribute("ObstacleGoodCount", goodCount)
+	racer.player:SetAttribute("LastObstacleCombo", comboVerdict or "Failed")
+	if comboVerdict then
+		self:_applyObstacleSuccess(racer, sequence, comboVerdict)
+	else
+		sequence.obstacle.resolved = true
+		sequence.obstacle.guardArmed = false
+		sequence.obstacle.failed = true
+		racer.player:SetAttribute("GuardReady", false)
+	end
+	racer.obstacleSequence = nil
+end
+
+function RaceService:_triggerObstacleCrash(racer, obstacle, initiatorUserId)
+	if obstacle.crashed then
+		return
+	end
+
+	obstacle.crashed = true
+	racer.activeObstacle = nil
+	local barrier = obstacle.barrier
+	if barrier and barrier.Parent then
+		barrier.CanCollide = false
+		self._guardImpactRemote:FireAllClients({
+			barrier = barrier,
+			obstacleId = obstacle.id,
+			initiatorUserId = initiatorUserId or 0,
+			throwDirection = obstacle.throwDirection,
+			forward = racer.forward,
+		})
+		task.delay(GameConfig.obstacle.guardReplicationHideDelaySeconds, function()
+			if barrier.Parent then
+				barrier.Transparency = 1
+				barrier.CanQuery = false
+			end
+		end)
+	end
+	self:_resolveReaction(racer, "Miss", nil)
+end
+
+function RaceService:_submitObstacleCrash(player, barrier, clientDetectedAt)
+	local racer = self._racers[player]
+	if
+		self._state ~= "Racing"
+		or not racer
+		or racer.finished
+		or type(clientDetectedAt) ~= "number"
+		or typeof(barrier) ~= "Instance"
+		or not barrier:IsA("BasePart")
+	then
+		return
+	end
+	if
+		math.abs(Workspace:GetServerTimeNow() - clientDetectedAt)
+		> GameConfig.reactionWindow.maximumClockDifferenceSeconds
+	then
+		return
+	end
+
+	local obstacle = racer.activeObstacle
+	if not obstacle or not obstacle.failed or obstacle.crashed or obstacle.barrier ~= barrier then
+		return
+	end
+
+	local progress = (racer.root.Position - racer.startOrigin):Dot(racer.forward)
+	local distanceToBarrier = obstacle.barrierProgress - progress
+	if
+		distanceToBarrier > GameConfig.obstacle.guardServerValidationDistanceStuds
+		or distanceToBarrier < -GameConfig.obstacle.guardServerFallbackStuds
+	then
+		return
+	end
+
+	self:_triggerObstacleCrash(racer, obstacle, player.UserId)
+end
+
+function RaceService:_resolveObstacleReaction(racer, event, verdict)
+	if event.resolved then
+		return
+	end
+	event.resolved = true
+	racer.obstacleReactions[event.id] = nil
+	local sequence = event.sequence
+	sequence.results[event.sequenceIndex] = verdict
+	sequence.resolvedCount += 1
+	self._reactionWindowRemote:FireClient(racer.player, {
+		action = "obstacleVerdict",
+		id = event.id,
+		verdict = verdict,
+	})
+	if sequence.resolvedCount >= sequence.obstacle.tapCount then
+		self:_finalizeObstacleSequence(racer, sequence)
+	end
+end
+
+function RaceService:_startObstacleSequence(racer, obstacle)
+	if racer.finished or racer.activeObstacle or obstacle.started then
+		return
+	end
+	obstacle.started = true
+	racer.activeObstacle = obstacle
+	racer.player:SetAttribute("LastObstacleCombo", "")
+
+	if racer.reaction and not racer.reaction.resolved then
+		racer.reaction.resolved = true
+		self._reactionWindowRemote:FireClient(racer.player, {
+			action = "remove",
+			id = racer.reaction.id,
+		})
+		racer.reaction = nil
+	end
+
+	local sequence = {
+		obstacle = obstacle,
+		results = {},
+		resolvedCount = 0,
+	}
+	racer.obstacleSequence = sequence
+	local startsAt = Workspace:GetServerTimeNow()
+	local random = Random.new(racer.player.UserId + self._raceId * 1009 + self._eventId)
+	local positions = ObstacleMechanic.generatePromptPositions(random, obstacle.tapCount, {
+		minimumX = GameConfig.reactionWindow.minimumScreenX,
+		maximumX = GameConfig.reactionWindow.maximumScreenX,
+		minimumY = GameConfig.reactionWindow.minimumScreenY,
+		maximumY = GameConfig.reactionWindow.maximumScreenY,
+	}, GameConfig.obstacle.promptMinimumDistance, GameConfig.obstacle.promptPositionAttempts)
+
+	for sequenceIndex = 1, obstacle.tapCount do
+		self._eventId += 1
+		local opensAt = startsAt + (sequenceIndex - 1) * GameConfig.obstacle.promptSpawnGapSeconds
+		local event = {
+			id = self._eventId,
+			opensAt = opensAt,
+			closesAt = opensAt + GameConfig.obstacle.reactionDurationSeconds,
+			duration = GameConfig.obstacle.reactionDurationSeconds,
+			resolved = false,
+			sequence = sequence,
+			sequenceIndex = sequenceIndex,
+		}
+		racer.obstacleReactions[event.id] = event
+		local position = positions[sequenceIndex]
+		self._reactionWindowRemote:FireClient(racer.player, {
+			action = "show",
+			id = event.id,
+			opensAt = event.opensAt,
+			duration = event.duration,
+			screenX = position.x,
+			screenY = position.y,
+			obstacle = true,
+			sequenceIndex = sequenceIndex,
+			sequenceLength = obstacle.tapCount,
+		})
+
+		task.spawn(function()
+			while
+				self._state == "Racing"
+				and not racer.finished
+				and not event.resolved
+				and Workspace:GetServerTimeNow() <= event.closesAt
+			do
+				task.wait()
+			end
+			if not event.resolved and not racer.finished then
+				self:_resolveObstacleReaction(racer, event, "Miss")
+			end
+		end)
+	end
+end
+
+function RaceService:_triggerGuardImpact(racer, obstacle, initiatorUserId)
+	if obstacle.guardUsed then
+		return
+	end
+
+	obstacle.guardUsed = true
+	obstacle.guardArmed = false
+	racer.activeObstacle = nil
+	racer.player:SetAttribute("GuardReady", false)
+	racer.player:SetAttribute("LastGuardImpact", obstacle.id)
+
+	local barrier = obstacle.barrier
+	if barrier and barrier.Parent then
+		barrier.CanCollide = false
+		self._guardImpactRemote:FireAllClients({
+			barrier = barrier,
+			obstacleId = obstacle.id,
+			initiatorUserId = initiatorUserId,
+			throwDirection = obstacle.throwDirection,
+			forward = racer.forward,
+		})
+		task.delay(GameConfig.obstacle.guardReplicationHideDelaySeconds, function()
+			if barrier.Parent then
+				barrier.Transparency = 1
+				barrier.CanQuery = false
+			end
+		end)
+	end
+end
+
+function RaceService:_submitGuardImpact(player, barrier, clientDetectedAt)
+	local racer = self._racers[player]
+	if
+		self._state ~= "Racing"
+		or not racer
+		or racer.finished
+		or type(clientDetectedAt) ~= "number"
+		or typeof(barrier) ~= "Instance"
+		or not barrier:IsA("BasePart")
+	then
+		return
+	end
+	if
+		math.abs(Workspace:GetServerTimeNow() - clientDetectedAt)
+		> GameConfig.reactionWindow.maximumClockDifferenceSeconds
+	then
+		return
+	end
+
+	local obstacle = racer.activeObstacle
+	if
+		not obstacle
+		or not obstacle.guardArmed
+		or obstacle.guardUsed
+		or obstacle.barrier ~= barrier
+	then
+		return
+	end
+
+	local progress = (racer.root.Position - racer.startOrigin):Dot(racer.forward)
+	local distanceToBarrier = obstacle.barrierProgress - progress
+	if
+		distanceToBarrier > GameConfig.obstacle.guardServerValidationDistanceStuds
+		or distanceToBarrier < -GameConfig.obstacle.guardServerFallbackStuds
+	then
+		return
+	end
+
+	self:_triggerGuardImpact(racer, obstacle, player.UserId)
+end
+
+function RaceService:_isNormalPromptTooCloseToObstacle(racer, promptDuration)
+	local progress = math.clamp(
+		(racer.root.Position - racer.startOrigin):Dot(racer.forward),
+		0,
+		racer.trackLength
+	)
+	local nextTriggerProgress = nil
+	for _, obstacle in racer.obstacles do
+		if not obstacle.started and obstacle.triggerProgress >= progress then
+			nextTriggerProgress = obstacle.triggerProgress
+			break
+		end
+	end
+	if not nextTriggerProgress then
+		return false
+	end
+
+	local effectiveSpeed = math.max(racer.speed * racer.speedMultiplier, 0.001)
+	local secondsUntilTrigger = (nextTriggerProgress - progress) / effectiveSpeed
+	return secondsUntilTrigger
+		<= promptDuration
+			+ GameConfig.reactionWindow.scheduleLeadSeconds
+			+ GameConfig.obstacle.normalPromptBufferSeconds
+end
+
 function RaceService:_runReactionLoop(racer)
 	local random = Random.new(racer.player.UserId + self._raceId * 1000)
 
 	while self._state == "Racing" and not racer.finished and racer.raceId == self._raceId do
+		if racer.activeObstacle then
+			task.wait(0.05)
+			continue
+		end
 		local tempo = Speed.tempoForProgress(racer.noMissStreak)
 		if racer.tempoStage == 1 then
 			task.wait(random:NextNumber(tempo.minimumIntervalSeconds, tempo.maximumIntervalSeconds))
@@ -430,6 +927,9 @@ function RaceService:_runReactionLoop(racer)
 
 		if self._state ~= "Racing" or racer.finished or racer.raceId ~= self._raceId then
 			break
+		end
+		if racer.activeObstacle then
+			continue
 		end
 
 		local chainLength = if racer.tempoStage >= 2
@@ -440,13 +940,21 @@ function RaceService:_runReactionLoop(racer)
 			)
 
 		for chainIndex = 1, chainLength do
-			if self._state ~= "Racing" or racer.finished or racer.raceId ~= self._raceId then
+			if
+				self._state ~= "Racing"
+				or racer.finished
+				or racer.raceId ~= self._raceId
+				or racer.activeObstacle
+			then
 				break
 			end
 
 			self._eventId += 1
 			local currentTempo = Speed.tempoForProgress(racer.noMissStreak)
 			local duration = currentTempo.reactionDurationSeconds
+			if self:_isNormalPromptTooCloseToObstacle(racer, duration) then
+				break
+			end
 			local scheduleLead = if racer.tempoStage >= 2
 				then 0
 				else GameConfig.reactionWindow.scheduleLeadSeconds
@@ -493,11 +1001,13 @@ function RaceService:_runReactionLoop(racer)
 			if not event.resolved then
 				event.resolved = true
 				racer.reaction = nil
-				self:_resolveReaction(racer, "Miss")
+				self:_resolveReaction(racer, "Miss", event.id)
 				break
 			end
 
-			if chainIndex < chainLength then
+			if racer.activeObstacle then
+				break
+			elseif chainIndex < chainLength then
 				task.wait(Speed.tempoForProgress(racer.noMissStreak).chainGapSeconds)
 			end
 		end
@@ -509,9 +1019,7 @@ function RaceService:_submitReaction(player, eventId, clientPressedAt)
 	if self._state ~= "Racing" or not racer or racer.finished then
 		return
 	end
-
-	local event = racer.reaction
-	if not event or event.resolved or event.id ~= eventId or type(clientPressedAt) ~= "number" then
+	if type(clientPressedAt) ~= "number" then
 		return
 	end
 
@@ -523,6 +1031,21 @@ function RaceService:_submitReaction(player, eventId, clientPressedAt)
 		return
 	end
 
+	local obstacleEvent = racer.obstacleReactions[eventId]
+	if obstacleEvent and not obstacleEvent.resolved then
+		local reactionSeconds = clientPressedAt - obstacleEvent.opensAt
+		local verdict = Reaction.verdictFor(reactionSeconds, obstacleEvent.duration)
+		if verdict then
+			self:_resolveObstacleReaction(racer, obstacleEvent, verdict)
+		end
+		return
+	end
+
+	local event = racer.reaction
+	if not event or event.resolved or event.id ~= eventId then
+		return
+	end
+
 	local reactionSeconds = clientPressedAt - event.opensAt
 	local verdict = Reaction.verdictFor(reactionSeconds, event.duration)
 	if not verdict then
@@ -531,7 +1054,7 @@ function RaceService:_submitReaction(player, eventId, clientPressedAt)
 
 	event.resolved = true
 	racer.reaction = nil
-	self:_resolveReaction(racer, verdict)
+	self:_resolveReaction(racer, verdict, event.id)
 end
 
 function RaceService:_finishRacer(racer)
@@ -541,6 +1064,9 @@ function RaceService:_finishRacer(racer)
 
 	racer.finished = true
 	racer.reaction = nil
+	table.clear(racer.obstacleReactions)
+	racer.obstacleSequence = nil
+	racer.activeObstacle = nil
 	self._finishCount += 1
 
 	local finishTime = Workspace:GetServerTimeNow() - self._raceStartedAt
@@ -550,6 +1076,7 @@ function RaceService:_finishRacer(racer)
 	racer.player:SetAttribute("Rank", self._finishCount)
 	racer.player:SetAttribute("RaceStatus", "Finished")
 	racer.player:SetAttribute("IsRecovering", false)
+	racer.player:SetAttribute("GuardReady", false)
 	racer.speedMultiplier = 1
 	racer.boostEndsAt = 0
 	racer.player:SetAttribute("SpeedMultiplier", 1)
@@ -574,6 +1101,10 @@ function RaceService:_updateRacers()
 			racer.finished = true
 			player:SetAttribute("RaceStatus", "DNF")
 			continue
+		end
+
+		if racer.onFire and racer.onFireEndsAt > 0 and now >= racer.onFireEndsAt then
+			self:_expireOnFire(racer)
 		end
 
 		if racer.recoveringUntil > 0 and now >= racer.recoveringUntil then
@@ -606,6 +1137,42 @@ function RaceService:_updateRacers()
 			0,
 			racer.trackLength
 		)
+
+		for _, obstacle in racer.obstacles do
+			if not obstacle.started and progress >= obstacle.triggerProgress then
+				self:_startObstacleSequence(racer, obstacle)
+				break
+			end
+
+			if
+				obstacle.started
+				and not obstacle.resolved
+				and progress >= obstacle.impactProgress
+			then
+				local unresolvedEvents = {}
+				for _, event in racer.obstacleReactions do
+					if event.sequence == racer.obstacleSequence and not event.resolved then
+						table.insert(unresolvedEvents, event)
+					end
+				end
+				for _, event in unresolvedEvents do
+					self:_resolveObstacleReaction(racer, event, "Miss")
+				end
+			end
+
+			if obstacle.failed and not obstacle.crashed and progress >= obstacle.crashProgress then
+				self:_triggerObstacleCrash(racer, obstacle)
+			end
+
+			if
+				obstacle.guardArmed
+				and not obstacle.guardUsed
+				and progress
+					>= obstacle.barrierProgress - GameConfig.obstacle.guardServerFallbackStuds
+			then
+				self:_triggerGuardImpact(racer, obstacle, 0)
+			end
+		end
 		if now - racer.lastReplicationAt >= 0.1 then
 			racer.lastReplicationAt = now
 			player:SetAttribute("Speed", speed)
@@ -633,17 +1200,19 @@ function RaceService:_hasActiveRacers()
 	return false
 end
 
-function RaceService:_runRace(eligiblePlayers)
+function RaceService:_runRace(eligiblePlayers, skipRaceCountdown)
 	if not self:_prepareRace(eligiblePlayers) then
 		return
 	end
 
-	for countdown = GameConfig.race.countdownSeconds, 1, -1 do
-		self:_setState("Countdown", countdown)
-		task.wait(1)
+	if not skipRaceCountdown then
+		for countdown = GameConfig.race.countdownSeconds, 1, -1 do
+			self:_setState("Countdown", countdown)
+			task.wait(1)
+		end
+		self:_setState("Countdown", 0)
+		task.wait(GameConfig.race.startSignalSeconds)
 	end
-	self:_setState("Countdown", 0)
-	task.wait(GameConfig.race.startSignalSeconds)
 
 	self:_setState("Racing")
 	self._raceStartedAt = Workspace:GetServerTimeNow()
@@ -664,12 +1233,16 @@ function RaceService:_runRace(eligiblePlayers)
 		if not racer.finished then
 			racer.finished = true
 			racer.reaction = nil
+			table.clear(racer.obstacleReactions)
+			racer.obstacleSequence = nil
+			racer.activeObstacle = nil
 			racer.humanoid.PlatformStand = false
 			racer.root.Anchored = false
 			racer.root.AssemblyLinearVelocity = Vector3.zero
 			racer.root.AssemblyAngularVelocity = Vector3.zero
 			player:SetAttribute("RaceStatus", "DNF")
 			player:SetAttribute("IsRecovering", false)
+			player:SetAttribute("GuardReady", false)
 			player:SetAttribute("SpeedMultiplier", 1)
 			player:SetAttribute("EffectiveSpeed", racer.speed)
 			player:SetAttribute("BoostEndsAt", 0)
@@ -686,12 +1259,23 @@ function RaceService:Start()
 	pcall(function()
 		PhysicsService:RegisterCollisionGroup(RACER_COLLISION_GROUP)
 	end)
+	pcall(function()
+		PhysicsService:RegisterCollisionGroup(GUARD_DEBRIS_COLLISION_GROUP)
+	end)
 	PhysicsService:CollisionGroupSetCollidable(RACER_COLLISION_GROUP, RACER_COLLISION_GROUP, false)
+	PhysicsService:CollisionGroupSetCollidable(
+		RACER_COLLISION_GROUP,
+		GUARD_DEBRIS_COLLISION_GROUP,
+		false
+	)
 
 	local function registerPlayer(player)
 		setPlayerDefaults(player)
 		player:GetAttributeChangedSignal("OnFire"):Connect(function()
 			updateOnFireAura(player, player.Character)
+		end)
+		player:GetAttributeChangedSignal("GuardReady"):Connect(function()
+			updateGuardShield(player, player.Character)
 		end)
 		player:GetAttributeChangedSignal("IsRace"):Connect(function()
 			if player.Character then
@@ -712,6 +1296,7 @@ function RaceService:Start()
 					moveCharacterToLobby(character)
 				end
 				updateOnFireAura(player, character)
+				updateGuardShield(player, character)
 			end)
 		end
 
@@ -729,6 +1314,14 @@ function RaceService:Start()
 	self._submitReactionRemote.OnServerEvent:Connect(function(player, eventId, clientPressedAt)
 		self:_submitReaction(player, eventId, clientPressedAt)
 	end)
+	self._submitGuardImpactRemote.OnServerEvent:Connect(function(player, barrier, clientDetectedAt)
+		self:_submitGuardImpact(player, barrier, clientDetectedAt)
+	end)
+	self._submitObstacleCrashRemote.OnServerEvent:Connect(
+		function(player, barrier, clientDetectedAt)
+			self:_submitObstacleCrash(player, barrier, clientDetectedAt)
+		end
+	)
 
 	RunService.Heartbeat:Connect(function()
 		if self._state == "Racing" then
@@ -738,6 +1331,37 @@ function RaceService:Start()
 
 	task.spawn(function()
 		while true do
+			if GameConfig.TEST_MODE then
+				self:_setState("Waiting")
+				while #Players:GetPlayers() < 1 do
+					task.wait(0.1)
+				end
+
+				local activeTrack, trackProblem =
+					self._trackService:ActivateTrackById(GameConfig.TEST_TRACK_ID)
+				if not activeTrack then
+					Workspace:SetAttribute("TrackSetupError", trackProblem)
+					warn(`[BalapKarung] Test track setup error: {trackProblem}`)
+					task.wait(1)
+					continue
+				end
+
+				self._activeTrack = activeTrack
+				Workspace:SetAttribute("TrackSetupError", "")
+				local testPlayers = Players:GetPlayers()
+				for _, player in testPlayers do
+					player:SetAttribute("InStartArea", true)
+				end
+				Workspace:SetAttribute("PlayersInStartArea", #testPlayers)
+				self:_setState("Intermission", GameConfig.TEST_COUNTDOWN)
+				for remaining = GameConfig.TEST_COUNTDOWN, 1, -1 do
+					Workspace:SetAttribute("Countdown", remaining)
+					task.wait(1)
+				end
+				self:_runRace(Players:GetPlayers(), true)
+				continue
+			end
+
 			self:_setState("Waiting")
 			local queuedPlayers = getPlayersInStartArea()
 			while #queuedPlayers < GameConfig.race.minimumPlayers do
