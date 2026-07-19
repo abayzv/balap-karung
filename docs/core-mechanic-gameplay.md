@@ -238,6 +238,8 @@ Setiap input harus menghasilkan feedback dalam waktu secepat mungkin.
 - `good`: diputar ketika server memberi verdict Good.
 - `perfect`: diputar ketika server memberi verdict Perfect.
 - `miss`: diputar ketika server memberi verdict Miss.
+- `onFireEnter`: diputar satu kali ketika On Fire aktif.
+- `onFireLoop`: diputar berulang setelah intro, memakai crossfade pendek agar transisinya mulus.
 - Sound ID dan volume diatur terpusat melalui `GameConfig.sounds`.
 - Sound ID dibiarkan kosong sampai asset final dipilih.
 

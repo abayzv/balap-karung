@@ -66,6 +66,11 @@ return function()
 			expect(GameConfig.speed.boostDurationSeconds).to.equal(3)
 		end)
 
+		it("configures the one-shot and looping On Fire sounds", function()
+			expect(GameConfig.sounds.onFireEnter.soundId).to.equal("rbxassetid://130422645188028")
+			expect(GameConfig.sounds.onFireLoop.soundId).to.equal("rbxassetid://82555625627924")
+		end)
+
 		it("removes the tap-to-tap gap from faster stages", function()
 			expect(GameConfig.speed.tempos[2].chainGapSeconds).to.equal(0)
 			expect(GameConfig.speed.tempos[3].chainGapSeconds).to.equal(0)

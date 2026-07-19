@@ -101,6 +101,14 @@ local GameConfig = {
 			soundId = "rbxassetid://112094436418581",
 			volume = 0.8,
 		},
+		onFireEnter = {
+			soundId = "rbxassetid://130422645188028",
+			volume = 0.9,
+		},
+		onFireLoop = {
+			soundId = "rbxassetid://82555625627924",
+			volume = 0.65,
+		},
 	},
 	ui = {
 		reactionIcon = "rbxassetid://98789776453615",
