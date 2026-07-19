@@ -1,0 +1,5 @@
+[tools]
+rojo = "rojo-rbx/rojo@7.7.0-rc.1"
+wally = "UpliftGames/wally@0.3.2"
+stylua = "JohnnyMorganz/StyLua@2.1.0"
+run-in-roblox = "rojo-rbx/run-in-roblox@0.3.0"

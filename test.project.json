@@ -1,0 +1,21 @@
+{
+  "name": "BalapKarungTests",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "$className": "ReplicatedStorage",
+      "Packages": {
+        "$path": "Packages"
+      },
+      "Shared": {
+        "$path": "src/shared"
+      }
+    },
+    "ServerScriptService": {
+      "$className": "ServerScriptService",
+      "Tests": {
+        "$path": "tests/specs"
+      }
+    }
+  }
+}
