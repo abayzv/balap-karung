@@ -1,5 +1,5 @@
 local GameConfig = {
-	TEST_MODE = true,
+	TEST_MODE = false,
 	TEST_TRACK_ID = "Road",
 	TEST_COUNTDOWN = 5,
 	projectName = "BalapKarung",
@@ -8,7 +8,7 @@ local GameConfig = {
 		intermissionSeconds = 30,
 		countdownSeconds = 10,
 		startSignalSeconds = 0.75,
-		resultsSeconds = 5,
+		resultsSeconds = 8,
 		maximumDurationSeconds = 75,
 		trackLengthStuds = 700,
 		laneWidthStuds = 6,
@@ -152,6 +152,14 @@ local GameConfig = {
 			soundId = "rbxassetid://112094436418581",
 			volume = 0.8,
 		},
+		finish = {
+			soundId = "rbxassetid://6370660283",
+			volume = 0.9,
+		},
+		resultsCinematic = {
+			soundId = "rbxassetid://1846942332",
+			volume = 0.9,
+		},
 		guardSwing = {
 			soundId = "rbxassetid://9120888980",
 			volume = 0.9,
@@ -176,6 +184,63 @@ local GameConfig = {
 	},
 	ui = {
 		dynamicScaleTag = "DynamicScale",
+		podiumCinematic = {
+			templateName = "Cinematics",
+			localSceneName = "LocalPodiumCinematic",
+			cameraTag = "PodiumCamera",
+			characterSpotTag = "ResultsCharacterSpot",
+			skipDelaySeconds = 1,
+			characterHeightOffset = 0,
+			characterScale = 3.5,
+			titles = {
+				First = "JUARA!",
+				Podium = "PODIUM!",
+				Default = "NICE TRY!",
+				DNF = "COBA LAGI!",
+			},
+			danceR15AnimationId = "rbxassetid://507771019",
+			danceR6AnimationId = "rbxassetid://182435998",
+		},
+		finishNotification = {
+			impactText = "FINISH!",
+			revealDelaySeconds = 0.58,
+			displaySeconds = 3.2,
+			confettiLifetimeSeconds = 3.4,
+			styles = {
+				First = {
+					text = "JUARA 1!",
+					gradientStart = Color3.fromRGB(255, 250, 145),
+					gradientEnd = Color3.fromRGB(255, 157, 0),
+					confettiCount = 90,
+				},
+				Second = {
+					text = "JUARA 2!",
+					gradientStart = Color3.fromRGB(255, 255, 255),
+					gradientEnd = Color3.fromRGB(121, 197, 255),
+					confettiCount = 62,
+				},
+				Third = {
+					text = "JUARA 3!",
+					gradientStart = Color3.fromRGB(255, 218, 151),
+					gradientEnd = Color3.fromRGB(205, 91, 25),
+					confettiCount = 48,
+				},
+				Default = {
+					text = "POSISI #{rank}",
+					gradientStart = Color3.fromRGB(255, 255, 255),
+					gradientEnd = Color3.fromRGB(83, 216, 255),
+					confettiCount = 24,
+				},
+			},
+			confettiColors = {
+				Color3.fromRGB(255, 62, 62),
+				Color3.fromRGB(255, 222, 59),
+				Color3.fromRGB(54, 179, 255),
+				Color3.fromRGB(92, 230, 126),
+				Color3.fromRGB(190, 91, 255),
+				Color3.fromRGB(255, 255, 255),
+			},
+		},
 		skillNotification = {
 			displaySeconds = 2.4,
 			entrySeconds = 0.42,

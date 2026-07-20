@@ -150,6 +150,16 @@ function SoundController.Play(name)
 	sound:Play()
 end
 
+function SoundController.Stop(name)
+	local sound = SoundController._sounds[name]
+	if not sound then
+		return
+	end
+
+	sound:Stop()
+	sound.TimePosition = 0
+end
+
 function SoundController.Start(reactionRemote)
 	if SoundController._started then
 		return

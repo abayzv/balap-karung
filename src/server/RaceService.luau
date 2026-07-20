@@ -339,12 +339,19 @@ function RaceService:_createRemotes()
 		submitObstacleCrash.Name = "SubmitObstacleCrash"
 		submitObstacleCrash.Parent = folder
 	end
+	local podiumResults = folder:FindFirstChild("PodiumResults")
+	if not podiumResults then
+		podiumResults = Instance.new("RemoteEvent")
+		podiumResults.Name = "PodiumResults"
+		podiumResults.Parent = folder
+	end
 
 	self._reactionWindowRemote = reactionWindow
 	self._submitReactionRemote = submitReaction
 	self._submitGuardImpactRemote = submitGuardImpact
 	self._guardImpactRemote = guardImpact
 	self._submitObstacleCrashRemote = submitObstacleCrash
+	self._podiumResultsRemote = podiumResults
 end
 
 function RaceService:_setState(state, countdown)
@@ -1212,6 +1219,34 @@ function RaceService:_hasActiveRacers()
 	return false
 end
 
+function RaceService:_buildPodiumResults()
+	local results = {}
+	for player in self._racers do
+		if player.Parent == Players then
+			table.insert(results, {
+				userId = player.UserId,
+				name = player.Name,
+				displayName = player.DisplayName,
+				rank = player:GetAttribute("Rank") or 0,
+				finishTime = player:GetAttribute("FinishTime") or 0,
+				status = player:GetAttribute("RaceStatus") or "DNF",
+			})
+		end
+	end
+	table.sort(results, function(left, right)
+		if left.rank <= 0 then
+			return false
+		elseif right.rank <= 0 then
+			return true
+		end
+		return left.rank < right.rank
+	end)
+	return {
+		raceId = self._raceId,
+		results = results,
+	}
+end
+
 function RaceService:_runRace(eligiblePlayers, skipRaceCountdown)
 	if not self:_prepareRace(eligiblePlayers) then
 		return
@@ -1262,9 +1297,22 @@ function RaceService:_runRace(eligiblePlayers, skipRaceCountdown)
 		end
 	end
 
+	local participants = {}
+	for player in self._racers do
+		if player.Parent == Players then
+			table.insert(participants, player)
+		end
+	end
+	local podiumPayload = self:_buildPodiumResults()
 	self:_setState("Results")
-	task.wait(GameConfig.race.resultsSeconds)
 	self:_returnPlayersToLobby()
+	task.wait()
+	for _, player in participants do
+		if player.Parent == Players then
+			self._podiumResultsRemote:FireClient(player, podiumPayload)
+		end
+	end
+	task.wait(GameConfig.race.resultsSeconds)
 end
 
 function RaceService:Start()

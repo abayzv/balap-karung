@@ -153,6 +153,33 @@ return function()
 			end
 		end)
 
+		it("configures placement-aware finish feedback", function()
+			expect(GameConfig.sounds.finish.soundId).to.equal("rbxassetid://6370660283")
+			expect(GameConfig.sounds.resultsCinematic.soundId).to.equal("rbxassetid://1846942332")
+			local finish = GameConfig.ui.finishNotification
+			expect(finish.styles.First.confettiCount > finish.styles.Second.confettiCount).to.equal(
+				true
+			)
+			expect(finish.styles.Second.confettiCount > finish.styles.Third.confettiCount).to.equal(
+				true
+			)
+			expect(finish.styles.Third.confettiCount > finish.styles.Default.confettiCount).to.equal(
+				true
+			)
+		end)
+
+		it("configures the static podium cinematic", function()
+			local podium = GameConfig.ui.podiumCinematic
+			expect(podium.templateName).to.equal("Cinematics")
+			expect(podium.localSceneName).to.equal("LocalPodiumCinematic")
+			expect(podium.cameraTag).to.equal("PodiumCamera")
+			expect(podium.characterSpotTag).to.equal("ResultsCharacterSpot")
+			expect(podium.titles.First).to.equal("JUARA!")
+			expect(podium.titles.DNF).to.equal("COBA LAGI!")
+			expect(podium.characterScale > 1).to.equal(true)
+			expect(string.find(podium.danceR15AnimationId, "rbxassetid://", 1, true)).to.equal(1)
+		end)
+
 		it("configures attribute-driven skill notifications", function()
 			local notification = GameConfig.ui.skillNotification
 			expect(notification.displaySeconds > 0).to.equal(true)
