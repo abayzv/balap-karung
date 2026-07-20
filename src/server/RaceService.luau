@@ -485,6 +485,7 @@ function RaceService:_prepareRace(eligiblePlayers)
 			lastReplicationAt = 0,
 			finished = false,
 			recoveringUntil = 0,
+			nextNormalPromptAt = 0,
 			reaction = nil,
 			obstacleReactions = {},
 			obstacleSequence = nil,
@@ -588,7 +589,7 @@ function RaceService:_resolveReaction(racer, verdict, eventId)
 		self:_startMissRecovery(racer)
 	else
 		racer.speedMultiplier = GameConfig.speed.verdictMultiplier[verdict]
-		racer.boostEndsAt = now + GameConfig.speed.boostDurationSeconds
+		racer.boostEndsAt = now + GameConfig.speed.verdictBoostDurationSeconds[verdict]
 		racer.player:SetAttribute("SpeedMultiplier", racer.speedMultiplier)
 		racer.player:SetAttribute("EffectiveSpeed", racer.speed * racer.speedMultiplier)
 		racer.player:SetAttribute("BoostEndsAt", racer.boostEndsAt)
@@ -699,6 +700,8 @@ function RaceService:_triggerObstacleCrash(racer, obstacle, initiatorUserId)
 		end)
 	end
 	self:_resolveReaction(racer, "Miss", nil)
+	racer.nextNormalPromptAt = Workspace:GetServerTimeNow()
+		+ GameConfig.obstacle.failedGuardPromptResumeSeconds
 end
 
 function RaceService:_submitObstacleCrash(player, barrier, clientDetectedAt)
@@ -936,7 +939,10 @@ function RaceService:_runReactionLoop(racer)
 			continue
 		end
 		local tempo = Speed.tempoForProgress(racer.noMissStreak)
-		if racer.tempoStage == 1 then
+		if racer.nextNormalPromptAt > 0 then
+			task.wait(math.max(0, racer.nextNormalPromptAt - Workspace:GetServerTimeNow()))
+			racer.nextNormalPromptAt = 0
+		elseif racer.tempoStage == 1 then
 			task.wait(random:NextNumber(tempo.minimumIntervalSeconds, tempo.maximumIntervalSeconds))
 		end
 
@@ -1118,7 +1124,8 @@ function RaceService:_updateRacers()
 
 		if player.Parent ~= Players or not racer.root.Parent or racer.humanoid.Health <= 0 then
 			racer.finished = true
-			player:SetAttribute("RaceStatus", "DNF")
+			racer.withdrawn = true
+			player:SetAttribute("RaceStatus", "Waiting")
 			continue
 		end
 
@@ -1221,15 +1228,15 @@ end
 
 function RaceService:_buildPodiumResults()
 	local results = {}
-	for player in self._racers do
-		if player.Parent == Players then
+	for player, racer in self._racers do
+		if player.Parent == Players and not racer.withdrawn then
 			table.insert(results, {
 				userId = player.UserId,
 				name = player.Name,
 				displayName = player.DisplayName,
 				rank = player:GetAttribute("Rank") or 0,
 				finishTime = player:GetAttribute("FinishTime") or 0,
-				status = player:GetAttribute("RaceStatus") or "DNF",
+				status = player:GetAttribute("RaceStatus") or "Finished",
 			})
 		end
 	end
@@ -1271,40 +1278,19 @@ function RaceService:_runRace(eligiblePlayers, skipRaceCountdown)
 		end)
 	end
 
-	local raceDeadline = self._raceStartedAt + GameConfig.race.maximumDurationSeconds
-	while self:_hasActiveRacers() and Workspace:GetServerTimeNow() < raceDeadline do
+	while self:_hasActiveRacers() do
 		task.wait(0.1)
 	end
 
-	for player, racer in self._racers do
-		if not racer.finished then
-			racer.finished = true
-			racer.reaction = nil
-			table.clear(racer.obstacleReactions)
-			racer.obstacleSequence = nil
-			racer.activeObstacle = nil
-			racer.humanoid.PlatformStand = false
-			racer.root.Anchored = false
-			racer.root.AssemblyLinearVelocity = Vector3.zero
-			racer.root.AssemblyAngularVelocity = Vector3.zero
-			player:SetAttribute("RaceStatus", "DNF")
-			player:SetAttribute("IsRecovering", false)
-			player:SetAttribute("GuardReady", false)
-			player:SetAttribute("SpeedMultiplier", 1)
-			player:SetAttribute("EffectiveSpeed", racer.speed)
-			player:SetAttribute("BoostEndsAt", 0)
-			self._reactionWindowRemote:FireClient(player, { action = "hide" })
-		end
-	end
-
 	local participants = {}
-	for player in self._racers do
-		if player.Parent == Players then
+	for player, racer in self._racers do
+		if player.Parent == Players and not racer.withdrawn then
 			table.insert(participants, player)
 		end
 	end
 	local podiumPayload = self:_buildPodiumResults()
 	self:_setState("Results")
+	task.wait(GameConfig.race.finishCelebrationSeconds)
 	self:_returnPlayersToLobby()
 	task.wait()
 	for _, player in participants do

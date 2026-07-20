@@ -3,7 +3,7 @@ local Workspace = game:GetService("Workspace")
 
 local RaceTimerController = {}
 
-function RaceTimerController.Start()
+function RaceTimerController.Start(soundController)
 	local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
 	local timerGui = playerGui:WaitForChild("RaceTimer", 10)
 	if not timerGui then
@@ -15,6 +15,7 @@ function RaceTimerController.Start()
 	local title = locationTile:WaitForChild("Title")
 	local countdownLabel = locationTile:WaitForChild("Bottom"):WaitForChild("Countdown")
 	local localPlayer = Players.LocalPlayer
+	local countdownSoundPlayed = false
 
 	local function render()
 		local state = Workspace:GetAttribute("RaceState") or "Waiting"
@@ -23,7 +24,15 @@ function RaceTimerController.Start()
 		timerGui.Enabled = isCountdown
 
 		if not isCountdown then
+			countdownSoundPlayed = false
 			return
+		end
+
+		if countdown == 4 and not countdownSoundPlayed then
+			countdownSoundPlayed = true
+			if soundController then
+				soundController.Play("raceCountdown")
+			end
 		end
 
 		if countdown <= 0 then

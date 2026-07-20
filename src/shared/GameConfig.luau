@@ -8,8 +8,8 @@ local GameConfig = {
 		intermissionSeconds = 30,
 		countdownSeconds = 10,
 		startSignalSeconds = 0.75,
+		finishCelebrationSeconds = 5,
 		resultsSeconds = 8,
-		maximumDurationSeconds = 75,
 		trackLengthStuds = 700,
 		laneWidthStuds = 6,
 		maximumLanes = 10,
@@ -36,7 +36,10 @@ local GameConfig = {
 		normalValue = 32,
 		onFireValue = 44,
 		onFireDurationSeconds = 8,
-		boostDurationSeconds = 3,
+		verdictBoostDurationSeconds = {
+			Good = 1.2,
+			Perfect = 1.7,
+		},
 		verdictMultiplier = {
 			Perfect = 2,
 			Good = 1.5,
@@ -48,20 +51,20 @@ local GameConfig = {
 		tempos = {
 			{
 				reactionDurationSeconds = 1.2,
-				minimumIntervalSeconds = 2.5,
-				maximumIntervalSeconds = 4,
+				minimumIntervalSeconds = 0.55,
+				maximumIntervalSeconds = 1.05,
 				chainGapSeconds = 0.35,
 			},
 			{
 				reactionDurationSeconds = 1.05,
-				minimumIntervalSeconds = 1.8,
-				maximumIntervalSeconds = 2.8,
+				minimumIntervalSeconds = 0.3,
+				maximumIntervalSeconds = 0.55,
 				chainGapSeconds = 0,
 			},
 			{
 				reactionDurationSeconds = 0.95,
-				minimumIntervalSeconds = 1.1,
-				maximumIntervalSeconds = 1.8,
+				minimumIntervalSeconds = 0.1,
+				maximumIntervalSeconds = 0.25,
 				chainGapSeconds = 0,
 			},
 		},
@@ -82,6 +85,7 @@ local GameConfig = {
 		promptMinimumDistance = 0.2,
 		promptPositionAttempts = 40,
 		normalPromptBufferSeconds = 1,
+		failedGuardPromptResumeSeconds = 0.75,
 		promptSuppressionPollSeconds = 0.05,
 		guardRaycastDistanceStuds = 16,
 		guardServerValidationDistanceStuds = 24,
@@ -156,8 +160,12 @@ local GameConfig = {
 			soundId = "rbxassetid://6370660283",
 			volume = 0.9,
 		},
+		raceCountdown = {
+			soundId = "rbxassetid://100324658979992",
+			volume = 0.9,
+		},
 		resultsCinematic = {
-			soundId = "rbxassetid://1846942332",
+			soundId = "rbxassetid://1844442542",
 			volume = 0.9,
 		},
 		guardSwing = {
@@ -196,7 +204,6 @@ local GameConfig = {
 				First = "JUARA!",
 				Podium = "PODIUM!",
 				Default = "NICE TRY!",
-				DNF = "COBA LAGI!",
 			},
 			danceR15AnimationId = "rbxassetid://507771019",
 			danceR6AnimationId = "rbxassetid://182435998",

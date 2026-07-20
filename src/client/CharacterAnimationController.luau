@@ -124,7 +124,6 @@ function CharacterAnimationController.Start()
 			local isOnTrack = raceStatus == "Countdown"
 				or raceStatus == "Racing"
 				or raceStatus == "Finished"
-				or raceStatus == "DNF"
 
 			if not isOnTrack then
 				if idleTrack and idleTrack.IsPlaying then

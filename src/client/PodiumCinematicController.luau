@@ -99,13 +99,13 @@ local function formatFinishTime(result)
 	if result.rank and result.rank > 0 and type(result.finishTime) == "number" then
 		return string.format("%.2fs", result.finishTime)
 	end
-	return "DNF"
+	return "-"
 end
 
 local function getResultTitle(result)
 	local titles = GameConfig.ui.podiumCinematic.titles
 	if not result or not result.rank or result.rank <= 0 then
-		return titles.DNF
+		return titles.Default
 	elseif result.rank == 1 then
 		return titles.First
 	elseif result.rank <= 3 then

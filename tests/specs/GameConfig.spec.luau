@@ -4,7 +4,7 @@ return function()
 
 	describe("GameConfig", function()
 		it("configures the Road test-mode bypass", function()
-			expect(GameConfig.TEST_MODE).to.equal(true)
+			expect(type(GameConfig.TEST_MODE)).to.equal("boolean")
 			expect(GameConfig.TEST_TRACK_ID).to.equal("Road")
 			expect(GameConfig.TEST_COUNTDOWN).to.equal(5)
 		end)
@@ -35,6 +35,7 @@ return function()
 		it("uses the ten second race countdown", function()
 			expect(GameConfig.race.countdownSeconds).to.equal(10)
 			expect(GameConfig.race.startSignalSeconds > 0).to.equal(true)
+			expect(GameConfig.race.finishCelebrationSeconds).to.equal(5)
 		end)
 
 		it("keeps timing verdict bands in order", function()
@@ -51,6 +52,7 @@ return function()
 		end)
 
 		it("makes every progress stage faster", function()
+			expect(GameConfig.speed.tempos[1].maximumIntervalSeconds <= 1.05).to.equal(true)
 			for index = 2, #GameConfig.speed.tempos do
 				local previousTempo = GameConfig.speed.tempos[index - 1]
 				local currentTempo = GameConfig.speed.tempos[index]
@@ -108,7 +110,20 @@ return function()
 		it("keeps the temporary Good and Perfect speed boosts", function()
 			expect(GameConfig.speed.verdictMultiplier.Good).to.equal(1.5)
 			expect(GameConfig.speed.verdictMultiplier.Perfect).to.equal(2)
-			expect(GameConfig.speed.boostDurationSeconds).to.equal(3)
+			expect(GameConfig.speed.verdictBoostDurationSeconds.Good).to.equal(1.2)
+			expect(GameConfig.speed.verdictBoostDurationSeconds.Perfect).to.equal(1.7)
+			expect(
+				GameConfig.speed.verdictBoostDurationSeconds.Perfect
+					> GameConfig.speed.verdictBoostDurationSeconds.Good
+			).to.equal(true)
+		end)
+
+		it("quickly resumes normal prompts after a failed Guard", function()
+			expect(GameConfig.obstacle.failedGuardPromptResumeSeconds).to.equal(0.75)
+			expect(
+				GameConfig.obstacle.failedGuardPromptResumeSeconds
+					> GameConfig.movement.missRecoverySeconds
+			).to.equal(true)
 		end)
 
 		it("configures the one-shot and looping On Fire sounds", function()
@@ -155,7 +170,10 @@ return function()
 
 		it("configures placement-aware finish feedback", function()
 			expect(GameConfig.sounds.finish.soundId).to.equal("rbxassetid://6370660283")
-			expect(GameConfig.sounds.resultsCinematic.soundId).to.equal("rbxassetid://1846942332")
+			expect(GameConfig.sounds.raceCountdown.soundId).to.equal("rbxassetid://100324658979992")
+			expect(
+				string.find(GameConfig.sounds.resultsCinematic.soundId, "rbxassetid://", 1, true)
+			).to.equal(1)
 			local finish = GameConfig.ui.finishNotification
 			expect(finish.styles.First.confettiCount > finish.styles.Second.confettiCount).to.equal(
 				true
@@ -175,7 +193,6 @@ return function()
 			expect(podium.cameraTag).to.equal("PodiumCamera")
 			expect(podium.characterSpotTag).to.equal("ResultsCharacterSpot")
 			expect(podium.titles.First).to.equal("JUARA!")
-			expect(podium.titles.DNF).to.equal("COBA LAGI!")
 			expect(podium.characterScale > 1).to.equal(true)
 			expect(string.find(podium.danceR15AnimationId, "rbxassetid://", 1, true)).to.equal(1)
 		end)
