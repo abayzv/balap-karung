@@ -13,6 +13,8 @@ local e = React.createElement
 local function ReactionButton(props)
 	local timingScaleRef = React.useRef(nil)
 	local reaction = props.reaction
+	local skill = GameConfig.ui.tapSkills[reaction.skillId]
+		or GameConfig.ui.tapSkills[GameConfig.reactionWindow.skillId]
 
 	React.useEffect(function()
 		local scale = timingScaleRef.current
@@ -56,7 +58,7 @@ local function ReactionButton(props)
 		}, {
 			Corner = e("UICorner", { CornerRadius = UDim.new(1, 0) }),
 			Glow = e("UIStroke", {
-				Color = Color3.fromRGB(255, 225, 92),
+				Color = skill.glowColor,
 				Thickness = 7,
 				Transparency = 0.28,
 			}),
@@ -71,8 +73,8 @@ local function ReactionButton(props)
 			Corner = e("UICorner", { CornerRadius = UDim.new(1, 0) }),
 			Gradient = e("UIGradient", {
 				Color = ColorSequence.new({
-					ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 82, 82)),
-					ColorSequenceKeypoint.new(1, Color3.fromRGB(130, 0, 16)),
+					ColorSequenceKeypoint.new(0, skill.gradientStart),
+					ColorSequenceKeypoint.new(1, skill.gradientEnd),
 				}),
 				Rotation = 90,
 			}),
@@ -81,19 +83,32 @@ local function ReactionButton(props)
 				ref = timingScaleRef,
 			}),
 			Stroke = e("UIStroke", {
-				Color = Color3.fromRGB(255, 182, 182),
+				Color = skill.strokeColor,
 				Thickness = 3,
 			}),
 			Icon = e("ImageLabel", {
 				AnchorPoint = Vector2.new(0.5, 0.5),
 				BackgroundTransparency = 1,
-				Image = GameConfig.ui.reactionIcon,
+				Image = skill.icon,
 				ImageColor3 = Color3.fromRGB(255, 255, 255),
 				Position = UDim2.fromScale(0.5, 0.5),
 				ScaleType = Enum.ScaleType.Fit,
 				Size = UDim2.fromScale(0.56, 0.56),
 				ZIndex = 3,
 			}),
+		}),
+		SkillLabel = e("TextLabel", {
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			BackgroundTransparency = 1,
+			Font = Enum.Font.GothamBlack,
+			Position = UDim2.fromScale(0.5, 1.1),
+			Size = UDim2.fromOffset(132, 28),
+			Text = skill.label,
+			TextColor3 = Color3.fromRGB(255, 255, 255),
+			TextSize = 20,
+			TextStrokeColor3 = Color3.fromRGB(25, 28, 38),
+			TextStrokeTransparency = 0.25,
+			ZIndex = 4,
 		}),
 	})
 end
@@ -184,6 +199,7 @@ local function App(props)
 						expiresAt = payload.opensAt + payload.duration,
 						screenX = payload.screenX,
 						screenY = payload.screenY,
+						skillId = payload.skillId or GameConfig.reactionWindow.skillId,
 						obstacle = payload.obstacle == true,
 					}
 					local currentReactions = table.clone(reactionsRef.current)

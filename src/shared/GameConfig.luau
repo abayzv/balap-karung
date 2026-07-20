@@ -73,6 +73,7 @@ local GameConfig = {
 	},
 	obstacle = {
 		tag = "TapBarrier",
+		skillId = "Guard",
 		triggerPartName = "PromptTrigger",
 		barrierPartName = "BarrierPart",
 		tapCount = 3,
@@ -81,6 +82,7 @@ local GameConfig = {
 		promptMinimumDistance = 0.2,
 		promptPositionAttempts = 40,
 		normalPromptBufferSeconds = 1,
+		promptSuppressionPollSeconds = 0.05,
 		guardRaycastDistanceStuds = 16,
 		guardServerValidationDistanceStuds = 24,
 		guardServerFallbackStuds = 8,
@@ -101,6 +103,7 @@ local GameConfig = {
 		},
 	},
 	reactionWindow = {
+		skillId = "Jump",
 		earlyEndRatio = 0.55,
 		perfectStartRatio = 0.7,
 		perfectEndRatio = 0.85,
@@ -126,6 +129,7 @@ local GameConfig = {
 		hopDebrisDefaultEmitCount = 8,
 		guardShieldTemplateName = "Shield",
 		guardShieldAttribute = "BalapKarungGuardShield",
+		guardShieldActivationEmitCount = 2,
 	},
 	sounds = {
 		backgroundMusic = {
@@ -152,6 +156,15 @@ local GameConfig = {
 			soundId = "rbxassetid://9120888980",
 			volume = 0.9,
 		},
+		guardReady = {
+			soundId = "rbxassetid://84590104457978",
+			volume = 0.8,
+		},
+		onFireReady = {
+			-- Placeholder notification chime; replace this independently from onFireEnter.
+			soundId = "rbxassetid://84590104457978",
+			volume = 0.85,
+		},
 		onFireEnter = {
 			soundId = "rbxassetid://130422645188028",
 			volume = 0.9,
@@ -162,8 +175,44 @@ local GameConfig = {
 		},
 	},
 	ui = {
-		reactionIcon = "rbxassetid://98789776453615",
 		dynamicScaleTag = "DynamicScale",
+		skillNotification = {
+			displaySeconds = 2.4,
+			entrySeconds = 0.42,
+			exitSeconds = 0.24,
+			entryOffsetY = -150,
+			exitOffsetY = -120,
+			skills = {
+				OnFire = {
+					triggerAttribute = "OnFire",
+					frameName = "OnFire",
+					soundName = "onFireReady",
+				},
+				Guard = {
+					triggerAttribute = "GuardReady",
+					frameName = "Guard",
+					soundName = "guardReady",
+				},
+			},
+		},
+		tapSkills = {
+			Jump = {
+				label = "Jump",
+				icon = "rbxassetid://98789776453615",
+				gradientStart = Color3.fromRGB(207, 9, 9),
+				gradientEnd = Color3.fromRGB(130, 0, 16),
+				strokeColor = Color3.fromRGB(255, 255, 255),
+				glowColor = Color3.fromRGB(255, 225, 92),
+			},
+			Guard = {
+				label = "Guard",
+				icon = "rbxassetid://11322093465",
+				gradientStart = Color3.fromRGB(74, 181, 255),
+				gradientEnd = Color3.fromRGB(7, 48, 145),
+				strokeColor = Color3.fromRGB(145, 218, 255),
+				glowColor = Color3.fromRGB(82, 202, 255),
+			},
+		},
 	},
 }
 

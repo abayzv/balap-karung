@@ -130,6 +130,8 @@ local function getLaneObstacles(trackModel, lane)
 						crashProgress = crashProgress,
 						tapCount = instance:GetAttribute("TapCount")
 							or GameConfig.obstacle.tapCount,
+						skillId = instance:GetAttribute("TapSkillId")
+							or GameConfig.obstacle.skillId,
 						barrier = barrier,
 						throwDirection = Vector3.yAxis:Cross(lane.forward)
 							* (instance:GetAttribute("ThrowSide") or 1),
@@ -275,6 +277,11 @@ local function updateGuardShield(player, character)
 			local attachment = child:Clone()
 			attachment:SetAttribute(GameConfig.effects.guardShieldAttribute, true)
 			attachment.Parent = upperTorso
+			for _, descendant in attachment:GetDescendants() do
+				if descendant:IsA("ParticleEmitter") then
+					descendant:Emit(GameConfig.effects.guardShieldActivationEmitCount)
+				end
+			end
 		end
 	end
 end
@@ -798,6 +805,7 @@ function RaceService:_startObstacleSequence(racer, obstacle)
 			obstacle = true,
 			sequenceIndex = sequenceIndex,
 			sequenceLength = obstacle.tapCount,
+			skillId = obstacle.skillId,
 		})
 
 		task.spawn(function()
@@ -953,6 +961,9 @@ function RaceService:_runReactionLoop(racer)
 			local currentTempo = Speed.tempoForProgress(racer.noMissStreak)
 			local duration = currentTempo.reactionDurationSeconds
 			if self:_isNormalPromptTooCloseToObstacle(racer, duration) then
+				-- Faster tempo stages skip the interval above. Yield here so prompt
+				-- suppression near an obstacle cannot spin until the script times out.
+				task.wait(GameConfig.obstacle.promptSuppressionPollSeconds)
 				break
 			end
 			local scheduleLead = if racer.tempoStage >= 2
@@ -975,6 +986,7 @@ function RaceService:_runReactionLoop(racer)
 				duration = duration,
 				chainIndex = chainIndex,
 				chainLength = chainLength,
+				skillId = GameConfig.reactionWindow.skillId,
 				screenX = random:NextNumber(
 					GameConfig.reactionWindow.minimumScreenX,
 					GameConfig.reactionWindow.maximumScreenX

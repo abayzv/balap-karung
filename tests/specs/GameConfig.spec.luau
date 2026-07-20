@@ -92,6 +92,7 @@ return function()
 
 		it("leaves a quiet window before an obstacle prompt", function()
 			expect(GameConfig.obstacle.normalPromptBufferSeconds >= 1).to.equal(true)
+			expect(GameConfig.obstacle.promptSuppressionPollSeconds > 0).to.equal(true)
 		end)
 
 		it("configures a physical guard impact", function()
@@ -137,6 +138,7 @@ return function()
 			expect(GameConfig.effects.hopDebrisTemplateName).to.equal("Debris")
 			expect(GameConfig.effects.guardShieldTemplateName).to.equal("Shield")
 			expect(GameConfig.effects.hopDebrisDefaultEmitCount > 0).to.equal(true)
+			expect(GameConfig.effects.guardShieldActivationEmitCount > 0).to.equal(true)
 		end)
 
 		it("configures a short Miss recovery", function()
@@ -151,10 +153,30 @@ return function()
 			end
 		end)
 
-		it("uses an image asset for the reaction icon", function()
-			expect(string.find(GameConfig.ui.reactionIcon, "rbxassetid://", 1, true) == 1).to.equal(
-				true
-			)
+		it("configures attribute-driven skill notifications", function()
+			local notification = GameConfig.ui.skillNotification
+			expect(notification.displaySeconds > 0).to.equal(true)
+			expect(notification.skills.OnFire.triggerAttribute).to.equal("OnFire")
+			expect(notification.skills.OnFire.soundName).to.equal("onFireReady")
+			expect(notification.skills.Guard.triggerAttribute).to.equal("GuardReady")
+			for _, skillId in { "OnFire", "Guard" } do
+				local skill = notification.skills[skillId]
+				expect(type(skill.frameName)).to.equal("string")
+				expect(GameConfig.sounds[skill.soundName] ~= nil).to.equal(true)
+			end
+		end)
+
+		it("configures scalable Jump and Guard tap skills", function()
+			expect(GameConfig.reactionWindow.skillId).to.equal("Jump")
+			expect(GameConfig.obstacle.skillId).to.equal("Guard")
+			for _, skillId in { "Jump", "Guard" } do
+				local skill = GameConfig.ui.tapSkills[skillId]
+				expect(skill ~= nil).to.equal(true)
+				expect(type(skill.label)).to.equal("string")
+				expect(string.find(skill.icon, "rbxassetid://", 1, true) == 1).to.equal(true)
+				expect(typeof(skill.gradientStart)).to.equal("Color3")
+				expect(typeof(skill.gradientEnd)).to.equal("Color3")
+			end
 		end)
 
 		it("uses the shared DynamicScale UI tag", function()

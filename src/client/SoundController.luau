@@ -163,12 +163,12 @@ function SoundController.Start(reactionRemote)
 	backgroundMusic.Looped = true
 	backgroundMusic:Play()
 	task.spawn(function()
+		local soundsToPreload = {}
+		for _, sound in SoundController._sounds do
+			table.insert(soundsToPreload, sound)
+		end
 		pcall(function()
-			ContentProvider:PreloadAsync({
-				backgroundMusic,
-				SoundController._sounds.onFireEnter,
-				SoundController._sounds.onFireLoop,
-			})
+			ContentProvider:PreloadAsync(soundsToPreload)
 		end)
 	end)
 
