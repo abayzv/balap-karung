@@ -3,9 +3,10 @@ return function()
 	local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 
 	describe("GameConfig", function()
-		it("configures the Road test-mode bypass", function()
+		it("configures the track test-mode bypass", function()
 			expect(type(GameConfig.TEST_MODE)).to.equal("boolean")
-			expect(GameConfig.TEST_TRACK_ID).to.equal("Road")
+			expect(type(GameConfig.TEST_TRACK_ID)).to.equal("string")
+			expect(GameConfig.TEST_TRACK_ID ~= "").to.equal(true)
 			expect(GameConfig.TEST_COUNTDOWN).to.equal(5)
 		end)
 
@@ -105,6 +106,21 @@ return function()
 			expect(GameConfig.obstacle.guardThrowHorizontalSpeed > 0).to.equal(true)
 			expect(GameConfig.obstacle.guardThrowVerticalSpeed > 0).to.equal(true)
 			expect(GameConfig.sounds.guardSwing.soundId ~= "").to.equal(true)
+		end)
+
+		it("configures lane-specific chained Breaker zones", function()
+			expect(GameConfig.breaker.zoneTag).to.equal("BreakerZone")
+			expect(GameConfig.breaker.obstacleTag).to.equal("BreakerObstacle")
+			expect(GameConfig.breaker.skillId).to.equal("Breaker")
+			expect(GameConfig.breaker.reactionDurationSeconds > 0).to.equal(true)
+			expect(GameConfig.breaker.promptLeadSeconds > 0).to.equal(true)
+			expect(
+				GameConfig.breaker.minimumObstacleSpacingStuds
+					< GameConfig.breaker.maximumObstacleSpacingStuds
+			).to.equal(true)
+			expect(GameConfig.breaker.serverValidationDistanceStuds > 0).to.equal(true)
+			expect(GameConfig.breaker.debrisSpreadRandomness > 0).to.equal(true)
+			expect(GameConfig.sounds.breakerImpact.soundId ~= "").to.equal(true)
 		end)
 
 		it("keeps the temporary Good and Perfect speed boosts", function()
@@ -217,17 +233,20 @@ return function()
 			expect(notification.skills.OnFire.triggerAttribute).to.equal("OnFire")
 			expect(notification.skills.OnFire.soundName).to.equal("onFireReady")
 			expect(notification.skills.Guard.triggerAttribute).to.equal("GuardReady")
-			for _, skillId in { "OnFire", "Guard" } do
+			expect(notification.skills.Breaker.triggerAttribute).to.equal("BreakerActive")
+			expect(notification.skills.Breaker.frameName).to.equal("Breaker")
+			for _, skillId in { "OnFire", "Guard", "Breaker" } do
 				local skill = notification.skills[skillId]
 				expect(type(skill.frameName)).to.equal("string")
 				expect(GameConfig.sounds[skill.soundName] ~= nil).to.equal(true)
 			end
 		end)
 
-		it("configures scalable Jump and Guard tap skills", function()
+		it("configures scalable Jump, Guard, and Breaker tap skills", function()
 			expect(GameConfig.reactionWindow.skillId).to.equal("Jump")
 			expect(GameConfig.obstacle.skillId).to.equal("Guard")
-			for _, skillId in { "Jump", "Guard" } do
+			expect(GameConfig.breaker.skillId).to.equal("Breaker")
+			for _, skillId in { "Jump", "Guard", "Breaker" } do
 				local skill = GameConfig.ui.tapSkills[skillId]
 				expect(skill ~= nil).to.equal(true)
 				expect(type(skill.label)).to.equal("string")

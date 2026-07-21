@@ -249,6 +249,10 @@ local function App(props)
 					position.y,
 					payload.verdict == "Good" or payload.verdict == "Perfect"
 				)
+			elseif payload.action == "breakerResult" then
+				removeReaction(payload.id)
+				local position = reactionPositions.current[payload.id] or { x = 0.5, y = 0.5 }
+				showFeedback(string.upper(payload.verdict), position.x, position.y, false)
 			elseif payload.action == "comboResult" then
 				showFeedback(comboText(payload.verdict), 0.5, 0.3, false)
 			else

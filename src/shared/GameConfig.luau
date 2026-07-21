@@ -111,6 +111,32 @@ local GameConfig = {
 			TriplePerfect = 2.25,
 		},
 	},
+	breaker = {
+		zoneTag = "BreakerZone",
+		obstacleTag = "BreakerObstacle",
+		skillId = "Breaker",
+		activationPartName = "ActivationPart",
+		endPartName = "EndPart",
+		obstaclesFolderName = "Obstacles",
+		impactPartName = "ImpactPart",
+		reactionDurationSeconds = 0.85,
+		promptLeadSeconds = 0.9,
+		promptMinimumDistance = 0.2,
+		promptPositionAttempts = 40,
+		impactRaycastDistanceStuds = 12,
+		failedImpactDistanceStuds = 3,
+		serverValidationDistanceStuds = 20,
+		serverFallbackStuds = 2,
+		minimumObstacleSpacingStuds = 20,
+		maximumObstacleSpacingStuds = 32,
+		spacingToleranceStuds = 2,
+		debrisLifetimeSeconds = 4,
+		throwHorizontalSpeed = 58,
+		throwVerticalSpeed = 30,
+		throwForwardSpeed = 18,
+		debrisSpreadRandomness = 0.9,
+		debrisForwardRandomness = 0.4,
+	},
 	reactionWindow = {
 		skillId = "Jump",
 		earlyEndRatio = 0.55,
@@ -202,9 +228,19 @@ local GameConfig = {
 			soundId = "rbxassetid://9120888980",
 			volume = 0.9,
 		},
+		breakerImpact = {
+			-- Placeholder; replace independently when the final Breaker SFX is ready.
+			soundId = "rbxassetid://9120888980",
+			volume = 0.95,
+		},
 		guardReady = {
 			soundId = "rbxassetid://84590104457978",
 			volume = 0.8,
+		},
+		breakerReady = {
+			-- Placeholder Breaker entry chime; replace only this asset later.
+			soundId = "rbxassetid://84590104457978",
+			volume = 0.9,
 		},
 		onFireReady = {
 			-- Placeholder notification chime; replace this independently from onFireEnter.
@@ -295,14 +331,19 @@ local GameConfig = {
 					frameName = "Guard",
 					soundName = "guardReady",
 				},
+				Breaker = {
+					triggerAttribute = "BreakerActive",
+					frameName = "Breaker",
+					soundName = "breakerReady",
+				},
 			},
 		},
 		tapSkills = {
 			Jump = {
 				label = "Jump",
 				icon = "rbxassetid://98789776453615",
-				gradientStart = Color3.fromRGB(207, 9, 9),
-				gradientEnd = Color3.fromRGB(130, 0, 16),
+				gradientStart = Color3.fromRGB(255, 217, 0),
+				gradientEnd = Color3.fromRGB(221, 59, 10),
 				strokeColor = Color3.fromRGB(255, 255, 255),
 				glowColor = Color3.fromRGB(255, 225, 92),
 			},
@@ -313,6 +354,15 @@ local GameConfig = {
 				gradientEnd = Color3.fromRGB(7, 48, 145),
 				strokeColor = Color3.fromRGB(145, 218, 255),
 				glowColor = Color3.fromRGB(82, 202, 255),
+			},
+			Breaker = {
+				label = "Breaker",
+				-- Placeholder icon; this can be changed without touching the mechanic.
+				icon = "rbxassetid://2245735821",
+				gradientStart = Color3.fromRGB(226, 11, 11),
+				gradientEnd = Color3.fromRGB(112, 19, 0),
+				strokeColor = Color3.fromRGB(255, 255, 255),
+				glowColor = Color3.fromRGB(255, 38, 38),
 			},
 		},
 	},

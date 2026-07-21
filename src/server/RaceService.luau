@@ -55,6 +55,9 @@ local function setPlayerDefaults(player)
 	player:SetAttribute("LastObstacleCombo", "")
 	player:SetAttribute("ObstaclePerfectCount", 0)
 	player:SetAttribute("ObstacleGoodCount", 0)
+	player:SetAttribute("BreakerActive", false)
+	player:SetAttribute("BreakerChain", 0)
+	player:SetAttribute("LastBreakerVerdict", "")
 end
 
 local function isPointInsidePart(part, point)
@@ -155,6 +158,231 @@ local function getLaneObstacles(trackModel, lane)
 		return left.triggerProgress < right.triggerProgress
 	end)
 	return obstacles
+end
+
+local function breakerPartProgress(part, lane)
+	return (part.Position - lane.spawn.Position):Dot(lane.forward)
+end
+
+local function setObstaclePartsNonCollidable(obstacleRoot)
+	if obstacleRoot:IsA("BasePart") then
+		obstacleRoot.CanCollide = false
+		obstacleRoot.CanTouch = false
+	end
+	for _, descendant in obstacleRoot:GetDescendants() do
+		if descendant:IsA("BasePart") then
+			descendant.CanCollide = false
+			descendant.CanTouch = false
+		end
+	end
+end
+
+local function getLaneBreakerZones(trackModel, lane)
+	local zones = {}
+	for _, zoneModel in CollectionService:GetTagged(GameConfig.breaker.zoneTag) do
+		if
+			not zoneModel:IsA("Model")
+			or not zoneModel:IsDescendantOf(trackModel)
+			or zoneModel:GetAttribute("LaneIndex") ~= lane.index
+		then
+			continue
+		end
+
+		local activationPart = zoneModel:FindFirstChild(GameConfig.breaker.activationPartName, true)
+		local endPart = zoneModel:FindFirstChild(GameConfig.breaker.endPartName, true)
+		local obstaclesFolder =
+			zoneModel:FindFirstChild(GameConfig.breaker.obstaclesFolderName, true)
+		if
+			not activationPart
+			or not activationPart:IsA("BasePart")
+			or not endPart
+			or not endPart:IsA("BasePart")
+			or not obstaclesFolder
+		then
+			warn(
+				`[BalapKarung] {zoneModel:GetFullName()} membutuhkan {GameConfig.breaker.activationPartName}, {GameConfig.breaker.endPartName}, dan folder {GameConfig.breaker.obstaclesFolderName}`
+			)
+			continue
+		end
+
+		local activationProgress = breakerPartProgress(activationPart, lane)
+		local endProgress = breakerPartProgress(endPart, lane)
+		if
+			activationProgress < 0
+			or endProgress <= activationProgress
+			or endProgress > lane.length
+		then
+			warn(`[BalapKarung] Urutan marker {zoneModel:GetFullName()} tidak valid`)
+			continue
+		end
+		activationPart.CanCollide = false
+		activationPart.CanTouch = false
+		endPart.CanCollide = false
+		endPart.CanTouch = false
+
+		local obstacles = {}
+		local usedIndices = {}
+		for _, obstacleRoot in CollectionService:GetTagged(GameConfig.breaker.obstacleTag) do
+			if not obstacleRoot:IsDescendantOf(obstaclesFolder) then
+				continue
+			end
+			local impactPart = obstacleRoot:FindFirstChild(GameConfig.breaker.impactPartName, true)
+			local obstacleIndex = obstacleRoot:GetAttribute("ObstacleIndex")
+			if
+				not impactPart
+				or not impactPart:IsA("BasePart")
+				or type(obstacleIndex) ~= "number"
+				or obstacleIndex % 1 ~= 0
+				or obstacleIndex < 1
+			then
+				warn(
+					`[BalapKarung] {obstacleRoot:GetFullName()} membutuhkan ImpactPart dan ObstacleIndex integer positif`
+				)
+				continue
+			end
+			if usedIndices[obstacleIndex] then
+				warn(
+					`[BalapKarung] ObstacleIndex {obstacleIndex} duplikat pada {zoneModel:GetFullName()}`
+				)
+				continue
+			end
+
+			local progress = breakerPartProgress(impactPart, lane)
+			if progress <= activationProgress or progress >= endProgress then
+				warn(
+					`[BalapKarung] {impactPart:GetFullName()} harus berada di antara ActivationPart dan EndPart`
+				)
+				continue
+			end
+
+			usedIndices[obstacleIndex] = true
+			setObstaclePartsNonCollidable(obstacleRoot)
+			impactPart.CanQuery = true
+			local throwSide = obstacleRoot:GetAttribute("ThrowSide")
+			if type(throwSide) ~= "number" or throwSide == 0 then
+				throwSide = if obstacleIndex % 2 == 0 then -1 else 1
+			end
+			table.insert(obstacles, {
+				id = obstacleRoot:GetAttribute("ObstacleId") or obstacleRoot.Name,
+				index = obstacleIndex,
+				root = obstacleRoot,
+				impactPart = impactPart,
+				progress = progress,
+				throwDirection = Vector3.yAxis:Cross(lane.forward) * throwSide,
+				promptStarted = false,
+				verdict = nil,
+				impacted = false,
+			})
+		end
+
+		table.sort(obstacles, function(left, right)
+			return left.index < right.index
+		end)
+		if #obstacles == 0 then
+			warn(`[BalapKarung] {zoneModel:GetFullName()} tidak memiliki BreakerObstacle valid`)
+			continue
+		end
+		for index, obstacle in obstacles do
+			if obstacle.index ~= index then
+				warn(
+					`[BalapKarung] ObstacleIndex {zoneModel:GetFullName()} harus berurutan mulai dari 1`
+				)
+				break
+			end
+			if index > 1 then
+				local spacing = obstacle.progress - obstacles[index - 1].progress
+				if
+					spacing < GameConfig.breaker.minimumObstacleSpacingStuds
+					or spacing > GameConfig.breaker.maximumObstacleSpacingStuds
+				then
+					warn(
+						`[BalapKarung] Jarak obstacle {index - 1}->{index} pada {zoneModel:GetFullName()} adalah {math.round(
+							spacing
+						)} studs; rekomendasi {GameConfig.breaker.minimumObstacleSpacingStuds}-{GameConfig.breaker.maximumObstacleSpacingStuds}`
+					)
+				end
+			end
+		end
+		local firstObstacle = obstacles[1]
+		local recommendedFirstGap = GameConfig.speed.onFireValue
+			* GameConfig.breaker.promptLeadSeconds
+		local actualFirstGap = firstObstacle.progress - activationProgress
+		if actualFirstGap < recommendedFirstGap then
+			warn(
+				`[BalapKarung] Jarak ActivationPart ke obstacle pertama {zoneModel:GetFullName()} hanya {math.round(
+					actualFirstGap
+				)} studs; membutuhkan sekitar {math.ceil(recommendedFirstGap)} studs saat OnFire`
+			)
+		end
+
+		table.insert(zones, {
+			id = zoneModel:GetAttribute("ZoneId") or zoneModel.Name,
+			encounterId = zoneModel:GetAttribute("EncounterId") or zoneModel.Name,
+			order = zoneModel:GetAttribute("ZoneOrder") or 1,
+			model = zoneModel,
+			activationProgress = activationProgress,
+			endProgress = endProgress,
+			obstacles = obstacles,
+			started = false,
+			completed = false,
+		})
+	end
+
+	table.sort(zones, function(left, right)
+		return left.activationProgress < right.activationProgress
+	end)
+	return zones
+end
+
+local function validateBreakerFairness(lanes, zonesByLane)
+	local encounters = {}
+	for _, lane in lanes do
+		for _, zone in zonesByLane[lane.index] or {} do
+			local encounter = encounters[zone.encounterId]
+			if not encounter then
+				encounter = {}
+				encounters[zone.encounterId] = encounter
+			end
+			encounter[lane.index] = zone
+		end
+	end
+
+	for encounterId, encounter in encounters do
+		local reference = nil
+		for _, lane in lanes do
+			local zone = encounter[lane.index]
+			if not zone then
+				warn(
+					`[BalapKarung] Breaker encounter {encounterId} tidak tersedia pada LaneIndex {lane.index}`
+				)
+				continue
+			end
+			if not reference then
+				reference = zone
+				continue
+			end
+			if #zone.obstacles ~= #reference.obstacles then
+				warn(
+					`[BalapKarung] Breaker encounter {encounterId} memiliki jumlah obstacle berbeda antar-lane`
+				)
+				continue
+			end
+			for index = 2, #zone.obstacles do
+				local spacing = zone.obstacles[index].progress - zone.obstacles[index - 1].progress
+				local referenceSpacing = reference.obstacles[index].progress
+					- reference.obstacles[index - 1].progress
+				if
+					math.abs(spacing - referenceSpacing)
+					> GameConfig.breaker.spacingToleranceStuds
+				then
+					warn(
+						`[BalapKarung] Pola jarak Breaker encounter {encounterId} LaneIndex {lane.index} berbeda lebih dari {GameConfig.breaker.spacingToleranceStuds} studs`
+					)
+					break
+				end
+			end
+		end
+	end
 end
 
 local function updateJumpState(player, character)
@@ -348,6 +576,24 @@ function RaceService:_createRemotes()
 		podiumResults.Name = "PodiumResults"
 		podiumResults.Parent = folder
 	end
+	local breakerState = folder:FindFirstChild("BreakerState")
+	if not breakerState then
+		breakerState = Instance.new("RemoteEvent")
+		breakerState.Name = "BreakerState"
+		breakerState.Parent = folder
+	end
+	local submitBreakerImpact = folder:FindFirstChild("SubmitBreakerImpact")
+	if not submitBreakerImpact then
+		submitBreakerImpact = Instance.new("RemoteEvent")
+		submitBreakerImpact.Name = "SubmitBreakerImpact"
+		submitBreakerImpact.Parent = folder
+	end
+	local breakerImpact = folder:FindFirstChild("BreakerImpact")
+	if not breakerImpact then
+		breakerImpact = Instance.new("RemoteEvent")
+		breakerImpact.Name = "BreakerImpact"
+		breakerImpact.Parent = folder
+	end
 
 	self._reactionWindowRemote = reactionWindow
 	self._submitReactionRemote = submitReaction
@@ -355,6 +601,9 @@ function RaceService:_createRemotes()
 	self._guardImpactRemote = guardImpact
 	self._submitObstacleCrashRemote = submitObstacleCrash
 	self._podiumResultsRemote = podiumResults
+	self._breakerStateRemote = breakerState
+	self._submitBreakerImpactRemote = submitBreakerImpact
+	self._breakerImpactRemote = breakerImpact
 end
 
 function RaceService:_setState(state, countdown)
@@ -434,6 +683,11 @@ function RaceService:_prepareRace(eligiblePlayers)
 
 	local racerCount = math.min(#currentPlayers, #activeTrack.lanes, GameConfig.race.maximumLanes)
 	local firstLaneIndex = math.floor((#activeTrack.lanes - racerCount) / 2) + 1
+	local breakerZonesByLane = {}
+	for _, lane in activeTrack.lanes do
+		breakerZonesByLane[lane.index] = getLaneBreakerZones(activeTrack.model, lane)
+	end
+	validateBreakerFairness(activeTrack.lanes, breakerZonesByLane)
 
 	for playerIndex, player in currentPlayers do
 		if playerIndex > racerCount then
@@ -495,6 +749,10 @@ function RaceService:_prepareRace(eligiblePlayers)
 			obstacleSequence = nil,
 			activeObstacle = nil,
 			obstacles = getLaneObstacles(activeTrack.model, lane),
+			breakerZones = breakerZonesByLane[lane.index],
+			activeBreakerZone = nil,
+			breakerReactions = {},
+			pausedOnFireRemaining = 0,
 			raceId = self._raceId,
 		}
 	end
@@ -555,13 +813,13 @@ function RaceService:_expireOnFire(racer)
 	racer.player:SetAttribute("EffectiveSpeed", racer.speed * racer.speedMultiplier)
 end
 
-function RaceService:_resolveReaction(racer, verdict, eventId)
+function RaceService:_resolveReaction(racer, verdict, eventId, suppressFeedback)
 	if racer.finished then
 		return
 	end
 	-- A normal prompt can expire in the same frame that an obstacle sequence starts.
 	-- Once the obstacle owns the input, that stale result must not punish the racer.
-	if eventId ~= nil and racer.activeObstacle then
+	if eventId ~= nil and (racer.activeObstacle or racer.activeBreakerZone) then
 		self._reactionWindowRemote:FireClient(racer.player, {
 			action = "remove",
 			id = eventId,
@@ -599,15 +857,17 @@ function RaceService:_resolveReaction(racer, verdict, eventId)
 		racer.player:SetAttribute("EffectiveSpeed", racer.speed * racer.speedMultiplier)
 		racer.player:SetAttribute("BoostEndsAt", racer.boostEndsAt)
 	end
-	self._reactionWindowRemote:FireClient(racer.player, {
-		action = "result",
-		id = eventId,
-		verdict = verdict,
-		onFireTriggered = not wasOnFire and racer.onFire,
-		onFireEnded = wasOnFire and not racer.onFire,
-		progress = racer.noMissStreak,
-		multiplier = racer.speedMultiplier,
-	})
+	if not suppressFeedback then
+		self._reactionWindowRemote:FireClient(racer.player, {
+			action = "result",
+			id = eventId,
+			verdict = verdict,
+			onFireTriggered = not wasOnFire and racer.onFire,
+			onFireEnded = wasOnFire and not racer.onFire,
+			progress = racer.noMissStreak,
+			multiplier = racer.speedMultiplier,
+		})
+	end
 end
 
 function RaceService:_applyObstacleSuccess(racer, sequence, comboVerdict)
@@ -765,7 +1025,7 @@ function RaceService:_resolveObstacleReaction(racer, event, verdict)
 end
 
 function RaceService:_startObstacleSequence(racer, obstacle)
-	if racer.finished or racer.activeObstacle or obstacle.started then
+	if racer.finished or racer.activeObstacle or racer.activeBreakerZone or obstacle.started then
 		return
 	end
 	obstacle.started = true
@@ -910,6 +1170,269 @@ function RaceService:_submitGuardImpact(player, barrier, clientDetectedAt)
 	self:_triggerGuardImpact(racer, obstacle, player.UserId)
 end
 
+function RaceService:_startBreakerZone(racer, zone)
+	if racer.finished or racer.activeObstacle or racer.activeBreakerZone or zone.started then
+		return
+	end
+
+	zone.started = true
+	racer.activeBreakerZone = zone
+	racer.player:SetAttribute("BreakerActive", true)
+	racer.player:SetAttribute("BreakerChain", 0)
+	racer.player:SetAttribute("LastBreakerVerdict", "")
+	if racer.onFire and racer.onFireEndsAt > 0 then
+		racer.pausedOnFireRemaining = math.max(0, racer.onFireEndsAt - Workspace:GetServerTimeNow())
+		racer.onFireEndsAt = 0
+		racer.player:SetAttribute("OnFireEndsAt", 0)
+	end
+
+	if racer.reaction and not racer.reaction.resolved then
+		racer.reaction.resolved = true
+		self._reactionWindowRemote:FireClient(racer.player, {
+			action = "remove",
+			id = racer.reaction.id,
+		})
+		racer.reaction = nil
+	end
+
+	-- Temporary normal boosts would make the same physical spacing produce wildly
+	-- different Breaker timings. Breaker keeps Normal/OnFire speed, but owns its tempo.
+	racer.speedMultiplier = 1
+	racer.boostEndsAt = 0
+	racer.player:SetAttribute("SpeedMultiplier", 1)
+	racer.player:SetAttribute("EffectiveSpeed", racer.speed)
+	racer.player:SetAttribute("BoostEndsAt", 0)
+end
+
+function RaceService:_endBreakerZone(racer, zone)
+	if racer.activeBreakerZone ~= zone then
+		return
+	end
+
+	zone.completed = true
+	racer.activeBreakerZone = nil
+	for eventId, event in racer.breakerReactions do
+		if event.zone == zone then
+			event.resolved = true
+			racer.breakerReactions[eventId] = nil
+			self._reactionWindowRemote:FireClient(racer.player, {
+				action = "remove",
+				id = eventId,
+			})
+		end
+	end
+	racer.player:SetAttribute("BreakerActive", false)
+	if racer.onFire and racer.pausedOnFireRemaining > 0 then
+		racer.onFireEndsAt = Workspace:GetServerTimeNow() + racer.pausedOnFireRemaining
+		racer.player:SetAttribute("OnFireEndsAt", racer.onFireEndsAt)
+	end
+	racer.pausedOnFireRemaining = 0
+	racer.nextNormalPromptAt = Workspace:GetServerTimeNow()
+	self._breakerStateRemote:FireClient(racer.player, { action = "clear" })
+end
+
+function RaceService:_resolveBreakerReaction(racer, event, verdict)
+	if event.resolved then
+		return
+	end
+	event.resolved = true
+	racer.breakerReactions[event.id] = nil
+	local obstacle = event.obstacle
+	obstacle.verdict = verdict
+	local success = verdict == "Good" or verdict == "Perfect"
+	if success then
+		local chain = (racer.player:GetAttribute("BreakerChain") or 0) + 1
+		racer.player:SetAttribute("BreakerChain", chain)
+	else
+		racer.player:SetAttribute("BreakerChain", 0)
+	end
+	racer.player:SetAttribute("LastBreakerVerdict", verdict)
+	self._reactionWindowRemote:FireClient(racer.player, {
+		action = "breakerResult",
+		id = event.id,
+		verdict = verdict,
+	})
+	self._breakerStateRemote:FireClient(racer.player, {
+		action = "resolved",
+		obstacle = obstacle.root,
+		impactPart = obstacle.impactPart,
+		success = success,
+		throwDirection = obstacle.throwDirection,
+		forward = racer.forward,
+	})
+end
+
+function RaceService:_startBreakerPrompt(racer, zone, obstacle)
+	if obstacle.promptStarted or obstacle.impacted then
+		return
+	end
+
+	obstacle.promptStarted = true
+	self._eventId += 1
+	local now = Workspace:GetServerTimeNow()
+	local random =
+		Random.new(racer.player.UserId + self._raceId * 2027 + math.floor(obstacle.progress * 10))
+	local positions = ObstacleMechanic.generatePromptPositions(random, 1, {
+		minimumX = GameConfig.reactionWindow.minimumScreenX,
+		maximumX = GameConfig.reactionWindow.maximumScreenX,
+		minimumY = GameConfig.reactionWindow.minimumScreenY,
+		maximumY = GameConfig.reactionWindow.maximumScreenY,
+	}, GameConfig.breaker.promptMinimumDistance, GameConfig.breaker.promptPositionAttempts)
+	local event = {
+		id = self._eventId,
+		opensAt = now,
+		closesAt = now + GameConfig.breaker.reactionDurationSeconds,
+		duration = GameConfig.breaker.reactionDurationSeconds,
+		resolved = false,
+		zone = zone,
+		obstacle = obstacle,
+	}
+	obstacle.event = event
+	racer.breakerReactions[event.id] = event
+	local position = positions[1]
+	self._reactionWindowRemote:FireClient(racer.player, {
+		action = "show",
+		id = event.id,
+		opensAt = event.opensAt,
+		duration = event.duration,
+		screenX = position.x,
+		screenY = position.y,
+		obstacle = true,
+		breaker = true,
+		sequenceIndex = obstacle.index,
+		sequenceLength = #zone.obstacles,
+		skillId = GameConfig.breaker.skillId,
+	})
+
+	task.spawn(function()
+		while
+			self._state == "Racing"
+			and not racer.finished
+			and racer.activeBreakerZone == zone
+			and not event.resolved
+			and Workspace:GetServerTimeNow() <= event.closesAt
+		do
+			task.wait()
+		end
+		if not event.resolved and not racer.finished and racer.activeBreakerZone == zone then
+			self:_resolveBreakerReaction(racer, event, "Miss")
+		end
+	end)
+end
+
+function RaceService:_triggerBreakerImpact(racer, obstacle, initiatorUserId)
+	if obstacle.impacted then
+		return
+	end
+	if obstacle.event and not obstacle.event.resolved then
+		self:_resolveBreakerReaction(racer, obstacle.event, "Miss")
+	end
+
+	obstacle.impacted = true
+	local success = obstacle.verdict == "Good" or obstacle.verdict == "Perfect"
+	self._breakerImpactRemote:FireAllClients({
+		obstacle = obstacle.root,
+		impactPart = obstacle.impactPart,
+		obstacleId = obstacle.id,
+		initiatorUserId = initiatorUserId or 0,
+		success = success,
+		throwDirection = obstacle.throwDirection,
+		forward = racer.forward,
+	})
+	if not success then
+		racer.pausedOnFireRemaining = 0
+		self:_resolveReaction(racer, "Miss", nil, true)
+	end
+end
+
+function RaceService:_submitBreakerImpact(player, impactPart, clientDetectedAt)
+	local racer = self._racers[player]
+	if
+		self._state ~= "Racing"
+		or not racer
+		or racer.finished
+		or not racer.activeBreakerZone
+		or type(clientDetectedAt) ~= "number"
+		or typeof(impactPart) ~= "Instance"
+		or not impactPart:IsA("BasePart")
+	then
+		return
+	end
+	if
+		math.abs(Workspace:GetServerTimeNow() - clientDetectedAt)
+		> GameConfig.reactionWindow.maximumClockDifferenceSeconds
+	then
+		return
+	end
+
+	local obstacle = nil
+	for _, candidate in racer.activeBreakerZone.obstacles do
+		if candidate.impactPart == impactPart then
+			obstacle = candidate
+			break
+		end
+	end
+	if not obstacle or obstacle.impacted or not obstacle.verdict then
+		return
+	end
+
+	local progress = (racer.root.Position - racer.startOrigin):Dot(racer.forward)
+	local distanceToImpact = obstacle.progress - progress
+	if
+		distanceToImpact > GameConfig.breaker.serverValidationDistanceStuds
+		or distanceToImpact < -GameConfig.breaker.serverFallbackStuds
+	then
+		return
+	end
+	self:_triggerBreakerImpact(racer, obstacle, player.UserId)
+end
+
+function RaceService:_updateBreakerZone(racer, progress)
+	local zone = racer.activeBreakerZone
+	if not zone then
+		for _, candidate in racer.breakerZones do
+			if
+				not candidate.started
+				and progress >= candidate.activationProgress
+				and progress < candidate.endProgress
+			then
+				self:_startBreakerZone(racer, candidate)
+				zone = racer.activeBreakerZone
+				break
+			end
+		end
+	end
+	if not zone then
+		return
+	end
+
+	if progress >= zone.endProgress then
+		self:_endBreakerZone(racer, zone)
+		return
+	end
+	if racer.recoveringUntil > 0 then
+		return
+	end
+
+	local effectiveSpeed = math.max(racer.speed * racer.speedMultiplier, 0.001)
+	for _, obstacle in zone.obstacles do
+		local distanceToImpact = obstacle.progress - progress
+		if
+			not obstacle.promptStarted
+			and distanceToImpact >= 0
+			and distanceToImpact / effectiveSpeed <= GameConfig.breaker.promptLeadSeconds
+		then
+			self:_startBreakerPrompt(racer, zone, obstacle)
+		end
+		if
+			not obstacle.impacted
+			and progress >= obstacle.progress - GameConfig.breaker.serverFallbackStuds
+		then
+			self:_triggerBreakerImpact(racer, obstacle, 0)
+		end
+	end
+end
+
 function RaceService:_isNormalPromptTooCloseToObstacle(racer, promptDuration)
 	local progress = math.clamp(
 		(racer.root.Position - racer.startOrigin):Dot(racer.forward),
@@ -920,6 +1443,16 @@ function RaceService:_isNormalPromptTooCloseToObstacle(racer, promptDuration)
 	for _, obstacle in racer.obstacles do
 		if not obstacle.started and obstacle.triggerProgress >= progress then
 			nextTriggerProgress = obstacle.triggerProgress
+			break
+		end
+	end
+	for _, zone in racer.breakerZones do
+		if
+			not zone.started
+			and zone.activationProgress >= progress
+			and (not nextTriggerProgress or zone.activationProgress < nextTriggerProgress)
+		then
+			nextTriggerProgress = zone.activationProgress
 			break
 		end
 	end
@@ -939,7 +1472,7 @@ function RaceService:_runReactionLoop(racer)
 	local random = Random.new(racer.player.UserId + self._raceId * 1000)
 
 	while self._state == "Racing" and not racer.finished and racer.raceId == self._raceId do
-		if racer.activeObstacle then
+		if racer.activeObstacle or racer.activeBreakerZone then
 			task.wait(0.05)
 			continue
 		end
@@ -954,7 +1487,7 @@ function RaceService:_runReactionLoop(racer)
 		if self._state ~= "Racing" or racer.finished or racer.raceId ~= self._raceId then
 			break
 		end
-		if racer.activeObstacle then
+		if racer.activeObstacle or racer.activeBreakerZone then
 			continue
 		end
 
@@ -971,6 +1504,7 @@ function RaceService:_runReactionLoop(racer)
 				or racer.finished
 				or racer.raceId ~= self._raceId
 				or racer.activeObstacle
+				or racer.activeBreakerZone
 			then
 				break
 			end
@@ -1035,7 +1569,7 @@ function RaceService:_runReactionLoop(racer)
 				break
 			end
 
-			if racer.activeObstacle then
+			if racer.activeObstacle or racer.activeBreakerZone then
 				break
 			elseif chainIndex < chainLength then
 				task.wait(Speed.tempoForProgress(racer.noMissStreak).chainGapSeconds)
@@ -1058,6 +1592,16 @@ function RaceService:_submitReaction(player, eventId, clientPressedAt)
 		math.abs(serverNow - clientPressedAt)
 		> GameConfig.reactionWindow.maximumClockDifferenceSeconds
 	then
+		return
+	end
+
+	local breakerEvent = racer.breakerReactions[eventId]
+	if breakerEvent and not breakerEvent.resolved then
+		local reactionSeconds = clientPressedAt - breakerEvent.opensAt
+		local verdict = Reaction.verdictFor(reactionSeconds, breakerEvent.duration)
+		if verdict then
+			self:_resolveBreakerReaction(racer, breakerEvent, verdict)
+		end
 		return
 	end
 
@@ -1097,6 +1641,8 @@ function RaceService:_finishRacer(racer)
 	table.clear(racer.obstacleReactions)
 	racer.obstacleSequence = nil
 	racer.activeObstacle = nil
+	table.clear(racer.breakerReactions)
+	racer.activeBreakerZone = nil
 	self._finishCount += 1
 
 	local finishTime = Workspace:GetServerTimeNow() - self._raceStartedAt
@@ -1110,6 +1656,7 @@ function RaceService:_finishRacer(racer)
 	racer.player:SetAttribute("RaceStatus", "Finished")
 	racer.player:SetAttribute("IsRecovering", false)
 	racer.player:SetAttribute("GuardReady", false)
+	racer.player:SetAttribute("BreakerActive", false)
 	self:_expireOnFire(racer)
 	racer.speedMultiplier = 1
 	racer.boostEndsAt = 0
@@ -1121,6 +1668,7 @@ function RaceService:_finishRacer(racer)
 	racer.root.AssemblyLinearVelocity = Vector3.zero
 	racer.root.AssemblyAngularVelocity = Vector3.zero
 	self._reactionWindowRemote:FireClient(racer.player, { action = "hide" })
+	self._breakerStateRemote:FireClient(racer.player, { action = "clear" })
 end
 
 function RaceService:_updateRacers()
@@ -1172,6 +1720,7 @@ function RaceService:_updateRacers()
 			0,
 			racer.trackLength
 		)
+		self:_updateBreakerZone(racer, progress)
 
 		for _, obstacle in racer.obstacles do
 			if not obstacle.started and progress >= obstacle.triggerProgress then
@@ -1377,6 +1926,11 @@ function RaceService:Start()
 	self._submitGuardImpactRemote.OnServerEvent:Connect(function(player, barrier, clientDetectedAt)
 		self:_submitGuardImpact(player, barrier, clientDetectedAt)
 	end)
+	self._submitBreakerImpactRemote.OnServerEvent:Connect(
+		function(player, impactPart, clientDetectedAt)
+			self:_submitBreakerImpact(player, impactPart, clientDetectedAt)
+		end
+	)
 	self._submitObstacleCrashRemote.OnServerEvent:Connect(
 		function(player, barrier, clientDetectedAt)
 			self:_submitObstacleCrash(player, barrier, clientDetectedAt)

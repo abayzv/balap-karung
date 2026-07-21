@@ -4,6 +4,7 @@ local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local React = require(ReplicatedStorage.Packages.React)
 local ReactRoblox = require(ReplicatedStorage.Packages.ReactRoblox)
 local App = require(script.App)
+local BreakerController = require(script.BreakerController)
 local CharacterAnimationController = require(script.CharacterAnimationController)
 local DynamicScaleController = require(script.DynamicScaleController)
 local FinishNotificationController = require(script.FinishNotificationController)
@@ -25,6 +26,11 @@ local reactionRemote = remotes:WaitForChild("ReactionWindow")
 print(`[{GameConfig.projectName}] Client initialized`)
 
 SoundController.Start(reactionRemote)
+BreakerController.Start(
+	remotes:WaitForChild("BreakerState"),
+	remotes:WaitForChild("SubmitBreakerImpact"),
+	remotes:WaitForChild("BreakerImpact")
+)
 GuardController.Start(
 	remotes:WaitForChild("SubmitGuardImpact"),
 	remotes:WaitForChild("GuardImpact"),
