@@ -376,8 +376,12 @@ function LeaderboardService:_readPersistent(boardState)
 	local entries = {}
 	for _, entry in pages:GetCurrentPage() do
 		local userId = tonumber(entry.key)
-		if userId and type(entry.value) == "number" then
-			entries[userId] = math.max(0, math.floor(entry.value))
+		if
+			userId
+			and type(entry.value) == "number"
+			and entry.value >= GameConfig.leaderboard.minimumValue
+		then
+			entries[userId] = math.floor(entry.value)
 		end
 	end
 	return entries
@@ -411,8 +415,10 @@ function LeaderboardService:_getEntries(boardState)
 	local values = self:_readPersistent(boardState)
 	for _, player in Players:GetPlayers() do
 		local value = self:_getPlayerValue(player, boardState.field, boardState.source)
-		if value then
-			values[player.UserId] = math.max(0, math.floor(value))
+		if value and value >= GameConfig.leaderboard.minimumValue then
+			values[player.UserId] = math.floor(value)
+		else
+			values[player.UserId] = nil
 		end
 	end
 	self:_resolveNames(values)

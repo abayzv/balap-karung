@@ -18,3 +18,5 @@ Leaderboard (Model) [tag: Leaderboard]
 - `Source` (string, opsional): `Auto`, `Leaderstats`, atau `Profile`.
 
 `Auto` membaca Player attribute yang disinkronkan dari ProfileStore terlebih dahulu, lalu fallback ke leaderstats. Data global disalin ke OrderedDataStore secara berkala dan hanya ditulis saat berubah. Di Studio dengan mock ProfileStore, leaderboard memakai pemain dalam server aktif tanpa mengakses DataStore.
+
+Nilai di bawah `GameConfig.leaderboard.minimumValue` tidak ditampilkan. Default-nya `1`, sehingga pemain dengan nilai `0` tidak mendapat card atau avatar podium.
