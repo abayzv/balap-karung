@@ -1,0 +1,37 @@
+return function()
+	local ReplicatedStorage = game:GetService("ReplicatedStorage")
+	local MusicCatalog = require(ReplicatedStorage.Shared.MusicCatalog)
+	local MusicPlayerState = require(ReplicatedStorage.Shared.MusicPlayerState)
+
+	describe("MusicPlayerState", function()
+		it("selects and wraps playlist tracks", function()
+			local state = MusicPlayerState.create(MusicCatalog, 0.35)
+			expect(state.selectedTrackId).to.equal(MusicCatalog[1].id)
+
+			state = MusicPlayerState.previousTrack(state)
+			expect(state.selectedTrackId).to.equal(MusicCatalog[#MusicCatalog].id)
+			state = MusicPlayerState.nextTrack(state)
+			expect(state.selectedTrackId).to.equal(MusicCatalog[1].id)
+		end)
+
+		it("clamps volume and toggles playback settings", function()
+			local state = MusicPlayerState.create(MusicCatalog, 0.35)
+			state = MusicPlayerState.setVolume(state, 2)
+			expect(state.volume).to.equal(1)
+			state = MusicPlayerState.setVolume(state, -1)
+			expect(state.volume).to.equal(0)
+
+			state = MusicPlayerState.togglePlaying(state)
+			expect(state.isPlaying).to.equal(false)
+			state = MusicPlayerState.setMusicEnabled(state, false)
+			expect(state.musicEnabled).to.equal(false)
+			state = MusicPlayerState.setSfxEnabled(state, false)
+			expect(state.sfxEnabled).to.equal(false)
+		end)
+
+		it("ignores unknown track ids", function()
+			local state = MusicPlayerState.create(MusicCatalog, 0.35)
+			expect(MusicPlayerState.selectTrack(state, "missing")).to.equal(state)
+		end)
+	end)
+end

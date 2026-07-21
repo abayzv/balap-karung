@@ -10,7 +10,11 @@
       },
       "Shared": {
         "$path": "src/shared",
-        "$ignoreUnknownInstances": true
+        "$ignoreUnknownInstances": true,
+        "Trails": {
+          "$className": "Folder",
+          "$ignoreUnknownInstances": true
+        }
       }
     },
     "ServerStorage": {

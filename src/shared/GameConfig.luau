@@ -1,12 +1,21 @@
 local GameConfig = {
-	TEST_MODE = true,
-	TEST_TRACK_ID = "Kampung",
+	TEST_MODE = false,
+	TEST_TRACK_ID = "Road",
 	TEST_COUNTDOWN = 5,
 	projectName = "BalapKarung",
 	data = {
 		storeName = "BalapKarungPlayerData_v1",
 		useMockStoreInStudio = true,
 		playtimeTickSeconds = 1,
+	},
+	economy = {
+		minimumValidInputsForReward = 3,
+		coinRewards = {
+			[1] = 15,
+			[2] = 10,
+			[3] = 7,
+			default = 3,
+		},
 	},
 	race = {
 		minimumPlayers = 2,
@@ -40,7 +49,7 @@ local GameConfig = {
 	speed = {
 		normalValue = 32,
 		onFireValue = 44,
-		onFireDurationSeconds = 8,
+		onFireDurationSeconds = 3,
 		verdictBoostDurationSeconds = {
 			Good = 1.2,
 			Perfect = 1.7,
@@ -165,6 +174,9 @@ local GameConfig = {
 		guardShieldTemplateName = "Shield",
 		guardShieldAttribute = "BalapKarungGuardShield",
 		guardShieldActivationEmitCount = 2,
+		breakerExplosionTemplateName = "Explosion",
+		breakerExplosionDefaultEmitCount = 8,
+		breakerExplosionCleanupPaddingSeconds = 0.5,
 	},
 	sack = {
 		templateName = "KarungModel",
@@ -230,7 +242,7 @@ local GameConfig = {
 		},
 		breakerImpact = {
 			-- Placeholder; replace independently when the final Breaker SFX is ready.
-			soundId = "rbxassetid://9120888980",
+			soundId = "rbxassetid://114560494672327",
 			volume = 0.95,
 		},
 		guardReady = {
@@ -340,12 +352,12 @@ local GameConfig = {
 		},
 		tapSkills = {
 			Jump = {
-				label = "Jump",
+				label = "Boost",
 				icon = "rbxassetid://98789776453615",
-				gradientStart = Color3.fromRGB(255, 217, 0),
-				gradientEnd = Color3.fromRGB(221, 59, 10),
+				gradientStart = Color3.fromRGB(13, 194, 6),
+				gradientEnd = Color3.fromRGB(3, 112, 9),
 				strokeColor = Color3.fromRGB(255, 255, 255),
-				glowColor = Color3.fromRGB(255, 225, 92),
+				glowColor = Color3.fromRGB(136, 255, 132),
 			},
 			Guard = {
 				label = "Guard",

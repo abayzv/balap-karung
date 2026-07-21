@@ -6,6 +6,8 @@ local SoundService = game:GetService("SoundService")
 local TweenService = game:GetService("TweenService")
 
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
+local MusicCatalog = require(ReplicatedStorage.Shared.MusicCatalog)
+local MusicPlayerState = require(ReplicatedStorage.Shared.MusicPlayerState)
 
 local SoundController = {
 	_sounds = {},
@@ -13,9 +15,54 @@ local SoundController = {
 	_onFireGeneration = 0,
 	_onFireLoopStarted = false,
 	_onFireTweens = {},
+	_musicListeners = {},
+	_musicState = MusicPlayerState.create(MusicCatalog, GameConfig.sounds.backgroundMusic.volume),
 }
 
 local ON_FIRE_CROSSFADE_SECONDS = 0.18
+
+local function emitMusicState()
+	for _, listener in table.clone(SoundController._musicListeners) do
+		task.spawn(listener, SoundController._musicState)
+	end
+end
+
+local function syncBackgroundMusic()
+	local sound = SoundController._sounds.backgroundMusic
+	if not sound then
+		return
+	end
+	local state = SoundController._musicState
+	local track = MusicPlayerState.getSelectedTrack(state)
+	if not track then
+		sound:Stop()
+		return
+	end
+	local soundId = `rbxassetid://{track.soundId}`
+	if sound.SoundId ~= soundId then
+		sound:Stop()
+		sound.SoundId = soundId
+		sound.TimePosition = 0
+	end
+	sound.Volume = state.volume
+	if state.musicEnabled and state.isPlaying then
+		if not sound.IsPlaying then
+			sound:Play()
+		end
+	elseif sound.IsPlaying then
+		sound:Pause()
+	end
+end
+
+local function updateMusicState(updater)
+	local nextState = updater(SoundController._musicState)
+	if nextState == SoundController._musicState then
+		return
+	end
+	SoundController._musicState = nextState
+	syncBackgroundMusic()
+	emitMusicState()
+end
 
 local function createSound(name, config)
 	local sound = Instance.new("Sound")
@@ -91,6 +138,9 @@ local function stopOnFireSounds()
 end
 
 local function startOnFireSounds()
+	if not SoundController._musicState.sfxEnabled then
+		return
+	end
 	SoundController._onFireGeneration += 1
 	local generation = SoundController._onFireGeneration
 	SoundController._onFireLoopStarted = false
@@ -142,12 +192,77 @@ end
 
 function SoundController.Play(name)
 	local sound = SoundController._sounds[name]
-	if not sound or sound.SoundId == "" then
+	if
+		not sound
+		or sound.SoundId == ""
+		or (name ~= "backgroundMusic" and not SoundController._musicState.sfxEnabled)
+	then
 		return
 	end
 
 	sound.TimePosition = 0
 	sound:Play()
+end
+
+function SoundController.GetMusicState()
+	return SoundController._musicState
+end
+
+function SoundController.SubscribeMusic(callback)
+	table.insert(SoundController._musicListeners, callback)
+	task.spawn(callback, SoundController._musicState)
+	return function()
+		local index = table.find(SoundController._musicListeners, callback)
+		if index then
+			table.remove(SoundController._musicListeners, index)
+		end
+	end
+end
+
+function SoundController.SelectTrack(trackId)
+	updateMusicState(function(state)
+		return MusicPlayerState.selectTrack(state, trackId)
+	end)
+end
+
+function SoundController.NextTrack()
+	updateMusicState(MusicPlayerState.nextTrack)
+end
+
+function SoundController.PreviousTrack()
+	updateMusicState(MusicPlayerState.previousTrack)
+end
+
+function SoundController.ToggleMusicPlayback()
+	updateMusicState(MusicPlayerState.togglePlaying)
+end
+
+function SoundController.SetMusicVolume(volume)
+	updateMusicState(function(state)
+		return MusicPlayerState.setVolume(state, volume)
+	end)
+end
+
+function SoundController.SetMusicEnabled(enabled)
+	updateMusicState(function(state)
+		return MusicPlayerState.setMusicEnabled(state, enabled)
+	end)
+end
+
+function SoundController.SetSfxEnabled(enabled)
+	updateMusicState(function(state)
+		return MusicPlayerState.setSfxEnabled(state, enabled)
+	end)
+	if not enabled then
+		stopOnFireSounds()
+		for name, sound in SoundController._sounds do
+			if name ~= "backgroundMusic" then
+				sound:Stop()
+			end
+		end
+	else
+		updateOnFireSounds()
+	end
 end
 
 function SoundController.Stop(name)
@@ -170,8 +285,9 @@ function SoundController.Start(reactionRemote)
 		SoundController._sounds[name] = createSound(name, config)
 	end
 	local backgroundMusic = SoundController._sounds.backgroundMusic
-	backgroundMusic.Looped = true
-	backgroundMusic:Play()
+	backgroundMusic.Looped = false
+	backgroundMusic.Ended:Connect(SoundController.NextTrack)
+	syncBackgroundMusic()
 	task.spawn(function()
 		local soundsToPreload = {}
 		for _, sound in SoundController._sounds do

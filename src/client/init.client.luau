@@ -10,6 +10,7 @@ local DynamicScaleController = require(script.DynamicScaleController)
 local FinishNotificationController = require(script.FinishNotificationController)
 local GuardController = require(script.GuardController)
 local LobbyTimerController = require(script.LobbyTimerController)
+local MusicApp = require(script.MusicApp)
 local OnFireController = require(script.OnFireController)
 local PodiumCinematicController = require(script.PodiumCinematicController)
 local RaceTimerController = require(script.RaceTimerController)
@@ -19,6 +20,7 @@ local RaceTrackerController = require(script.RaceTrackerController)
 local SackArmPoseController = require(script.SackArmPoseController)
 local SkillNotificationController = require(script.SkillNotificationController)
 local SoundController = require(script.SoundController)
+local TrailShopController = require(script.TrailShopController)
 
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
 local reactionRemote = remotes:WaitForChild("ReactionWindow")
@@ -48,6 +50,7 @@ RaceResetController.Start()
 RaceTrackerController.Start()
 SackArmPoseController.Start()
 SkillNotificationController.Start()
+TrailShopController.Start()
 
 local playerGui = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
 
@@ -61,4 +64,16 @@ local root = ReactRoblox.createRoot(screenGui)
 root:render(React.createElement(App, {
 	reactionRemote = reactionRemote,
 	submitRemote = remotes:WaitForChild("SubmitReaction"),
+}))
+
+local musicScreenGui = Instance.new("ScreenGui")
+musicScreenGui.Name = "BalapKarungMusicUI"
+musicScreenGui.IgnoreGuiInset = true
+musicScreenGui.ResetOnSpawn = false
+musicScreenGui.DisplayOrder = 40
+musicScreenGui.Parent = playerGui
+
+local musicRoot = ReactRoblox.createRoot(musicScreenGui)
+musicRoot:render(React.createElement(MusicApp, {
+	soundController = SoundController,
 }))

@@ -58,6 +58,8 @@ local function setPlayerDefaults(player)
 	player:SetAttribute("BreakerActive", false)
 	player:SetAttribute("BreakerChain", 0)
 	player:SetAttribute("LastBreakerVerdict", "")
+	player:SetAttribute("RaceValidInputs", 0)
+	player:SetAttribute("LastCoinReward", 0)
 end
 
 local function isPointInsidePart(part, point)
@@ -753,6 +755,7 @@ function RaceService:_prepareRace(eligiblePlayers)
 			activeBreakerZone = nil,
 			breakerReactions = {},
 			pausedOnFireRemaining = 0,
+			validInputCount = 0,
 			raceId = self._raceId,
 		}
 	end
@@ -1600,6 +1603,8 @@ function RaceService:_submitReaction(player, eventId, clientPressedAt)
 		local reactionSeconds = clientPressedAt - breakerEvent.opensAt
 		local verdict = Reaction.verdictFor(reactionSeconds, breakerEvent.duration)
 		if verdict then
+			racer.validInputCount += 1
+			racer.player:SetAttribute("RaceValidInputs", racer.validInputCount)
 			self:_resolveBreakerReaction(racer, breakerEvent, verdict)
 		end
 		return
@@ -1610,6 +1615,8 @@ function RaceService:_submitReaction(player, eventId, clientPressedAt)
 		local reactionSeconds = clientPressedAt - obstacleEvent.opensAt
 		local verdict = Reaction.verdictFor(reactionSeconds, obstacleEvent.duration)
 		if verdict then
+			racer.validInputCount += 1
+			racer.player:SetAttribute("RaceValidInputs", racer.validInputCount)
 			self:_resolveObstacleReaction(racer, obstacleEvent, verdict)
 		end
 		return
@@ -1628,6 +1635,8 @@ function RaceService:_submitReaction(player, eventId, clientPressedAt)
 
 	event.resolved = true
 	racer.reaction = nil
+	racer.validInputCount += 1
+	racer.player:SetAttribute("RaceValidInputs", racer.validInputCount)
 	self:_resolveReaction(racer, verdict, event.id)
 end
 
@@ -1651,7 +1660,12 @@ function RaceService:_finishRacer(racer)
 	racer.player:SetAttribute("FinishTime", finishTime)
 	racer.player:SetAttribute("Rank", self._finishCount)
 	if self._dataService then
-		self._dataService:RecordRaceResult(racer.player, self._finishCount == 1)
+		self._dataService:RecordRaceResult(
+			racer.player,
+			self._finishCount == 1,
+			self._finishCount,
+			racer.validInputCount
+		)
 	end
 	racer.player:SetAttribute("RaceStatus", "Finished")
 	racer.player:SetAttribute("IsRecovering", false)

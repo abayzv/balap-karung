@@ -4,7 +4,9 @@ local RunService = game:GetService("RunService")
 local ServerScriptService = game:GetService("ServerScriptService")
 
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
+local CoinEconomy = require(ReplicatedStorage.Shared.CoinEconomy)
 local PlayerData = require(ReplicatedStorage.Shared.PlayerData)
+local TrailCatalog = require(ReplicatedStorage.Shared.TrailCatalog)
 local ProfileStore = require(ServerScriptService.ServerPackages.ProfileStore)
 
 local DataService = {}
@@ -27,6 +29,7 @@ local function getOrCreateIntValue(parent, name)
 end
 
 function DataService.new()
+	TrailCatalog.refresh()
 	local self = setmetatable({}, DataService)
 	local store = ProfileStore.New(GameConfig.data.storeName, PlayerData.template)
 	if RunService:IsStudio() and GameConfig.data.useMockStoreInStudio then
@@ -46,7 +49,12 @@ function DataService:_syncPlayer(player)
 
 	local data = PlayerData.sanitize(profile.Data)
 	for field in PlayerData.template do
-		player:SetAttribute(field, data[field])
+		if type(data[field]) ~= "table" then
+			player:SetAttribute(field, data[field])
+		end
+	end
+	for _, trail in TrailCatalog.list do
+		player:SetAttribute(`OwnsTrail_{trail.id}`, data.OwnedTrails[trail.id] == true)
 	end
 
 	local leaderstats = player:FindFirstChild("leaderstats")
@@ -96,16 +104,55 @@ function DataService:_loadPlayer(player)
 	self:_syncPlayer(player)
 end
 
-function DataService:RecordRaceResult(player, won)
+function DataService:RecordRaceResult(player, won, rank, validInputCount)
 	local profile = self._profiles[player]
 	if not profile or not profile:IsActive() then
 		warn(`[BalapKarung] Hasil race {player.Name} tidak tersimpan: profile belum aktif`)
 		return false
 	end
 
-	PlayerData.applyRaceResult(profile.Data, won)
+	local reward = CoinEconomy.rewardForResult(rank, validInputCount)
+	PlayerData.applyRaceResult(profile.Data, won, reward)
 	self:_syncPlayer(player)
-	return true
+	player:SetAttribute("LastCoinReward", reward)
+	return true, reward
+end
+
+function DataService:PurchaseTrail(player, trailId)
+	local profile = self._profiles[player]
+	local trail = if type(trailId) == "string" then TrailCatalog.byId[trailId] else nil
+	if not profile or not profile:IsActive() then
+		return false, "DataNotLoaded"
+	elseif not trail or trail.id == TrailCatalog.defaultTrailId then
+		return false, "InvalidTrail"
+	end
+
+	local success, code = PlayerData.purchaseTrail(profile.Data, trail.id, trail.price)
+	self:_syncPlayer(player)
+	return success,
+		code,
+		{
+			coins = profile.Data.Coins,
+			equippedTrail = profile.Data.EquippedTrail,
+		}
+end
+
+function DataService:EquipTrail(player, trailId)
+	local profile = self._profiles[player]
+	if not profile or not profile:IsActive() then
+		return false, "DataNotLoaded"
+	elseif type(trailId) ~= "string" or not TrailCatalog.byId[trailId] then
+		return false, "InvalidTrail"
+	end
+
+	local success, code = PlayerData.equipTrail(profile.Data, trailId)
+	self:_syncPlayer(player)
+	return success,
+		code,
+		{
+			coins = profile.Data.Coins,
+			equippedTrail = profile.Data.EquippedTrail,
+		}
 end
 
 function DataService:Start()

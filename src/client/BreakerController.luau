@@ -9,6 +9,47 @@ local SoundController = require(script.Parent.SoundController)
 
 local BreakerController = {}
 local DEBRIS_COLLISION_GROUP = "BalapKarungGuardDebris"
+local warnedMissingExplosion = false
+
+local function emitBreakerExplosion(impactPart)
+	local template =
+		ReplicatedStorage:FindFirstChild(GameConfig.effects.breakerExplosionTemplateName)
+	if not template or not template:IsA("BasePart") then
+		if not warnedMissingExplosion then
+			warn(
+				`[BalapKarung] Template {GameConfig.effects.breakerExplosionTemplateName} tidak ditemukan di ReplicatedStorage`
+			)
+			warnedMissingExplosion = true
+		end
+		return
+	end
+
+	for _, child in template:GetChildren() do
+		if child:IsA("Attachment") or child:IsA("ParticleEmitter") then
+			local clone = child:Clone()
+			clone.Parent = impactPart
+			local maximumLifetime = 0
+			local emitters = if clone:IsA("ParticleEmitter")
+				then { clone }
+				else clone:GetDescendants()
+			for _, emitter in emitters do
+				if emitter:IsA("ParticleEmitter") then
+					emitter.Enabled = false
+					local emitCount = emitter:GetAttribute("EmitCount")
+					if type(emitCount) ~= "number" then
+						emitCount = GameConfig.effects.breakerExplosionDefaultEmitCount
+					end
+					emitter:Emit(math.max(1, math.floor(emitCount)))
+					maximumLifetime = math.max(maximumLifetime, emitter.Lifetime.Max)
+				end
+			end
+			Debris:AddItem(
+				clone,
+				maximumLifetime + GameConfig.effects.breakerExplosionCleanupPaddingSeconds
+			)
+		end
+	end
+end
 
 local function setLocalHidden(obstacle, hidden)
 	for _, descendant in obstacle:GetDescendants() do
@@ -104,6 +145,7 @@ local function animateObstacle(obstacle, impactPart, throwDirection, forward)
 	end
 
 	Debris:AddItem(debris, GameConfig.breaker.debrisLifetimeSeconds)
+	emitBreakerExplosion(impactPart)
 	SoundController.Play("breakerImpact")
 end
 
