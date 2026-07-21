@@ -1,6 +1,6 @@
 local GameConfig = {
 	TEST_MODE = true,
-	TEST_TRACK_ID = "Road",
+	TEST_TRACK_ID = "Kampung",
 	TEST_COUNTDOWN = 5,
 	projectName = "BalapKarung",
 	data = {
@@ -89,7 +89,7 @@ local GameConfig = {
 		reactionDurationSeconds = 1,
 		promptMinimumDistance = 0.2,
 		promptPositionAttempts = 40,
-		normalPromptBufferSeconds = 1,
+		normalPromptBufferSeconds = 0.25,
 		failedGuardPromptResumeSeconds = 0.75,
 		promptSuppressionPollSeconds = 0.05,
 		guardRaycastDistanceStuds = 16,

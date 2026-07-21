@@ -94,7 +94,7 @@ return function()
 		end)
 
 		it("leaves a quiet window before an obstacle prompt", function()
-			expect(GameConfig.obstacle.normalPromptBufferSeconds >= 1).to.equal(true)
+			expect(GameConfig.obstacle.normalPromptBufferSeconds).to.equal(0.25)
 			expect(GameConfig.obstacle.promptSuppressionPollSeconds > 0).to.equal(true)
 		end)
 

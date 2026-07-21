@@ -300,7 +300,6 @@ function PodiumCinematicController.Start(resultsRemote, soundController)
 		Lighting.GlobalShadows = false
 		camera.CameraType = Enum.CameraType.Scriptable
 		camera.CFrame = cameraPart.CFrame
-		camera.FieldOfView = cameraPart:GetAttribute("FieldOfView") or 50
 
 		local cleaned = false
 		local skipConnection = nil
