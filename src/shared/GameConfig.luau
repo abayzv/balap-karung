@@ -5,7 +5,7 @@ local GameConfig = {
 	projectName = "BalapKarung",
 	data = {
 		storeName = "BalapKarungPlayerData_v1",
-		useMockStoreInStudio = true,
+		useMockStoreInStudio = false,
 		playtimeTickSeconds = 1,
 	},
 	economy = {
@@ -16,6 +16,20 @@ local GameConfig = {
 			[3] = 7,
 			default = 3,
 		},
+	},
+	leaderboard = {
+		modelTag = "Leaderboard",
+		viewTag = "LeaderboardView",
+		avatarTag = "LeaderboardAvatar",
+		surfaceGuiName = "BalapKarungLeaderboardUI",
+		orderedStorePrefix = "BalapKarungLeaderboard",
+		initialRefreshDelaySeconds = 3,
+		minimumRefreshGapSeconds = 5,
+		refreshIntervalSeconds = 60,
+		writeIntervalSeconds = 90,
+		initialWriteDelaySeconds = 15,
+		maximumItems = 100,
+		avatarAnimationId = "rbxassetid://507771019",
 	},
 	race = {
 		minimumPlayers = 2,
@@ -353,7 +367,7 @@ local GameConfig = {
 		tapSkills = {
 			Jump = {
 				label = "Boost",
-				icon = "rbxassetid://98789776453615",
+				icon = "rbxassetid://14549056586",
 				gradientStart = Color3.fromRGB(13, 194, 6),
 				gradientEnd = Color3.fromRGB(3, 112, 9),
 				strokeColor = Color3.fromRGB(255, 255, 255),
