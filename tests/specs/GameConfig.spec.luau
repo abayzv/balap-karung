@@ -156,6 +156,20 @@ return function()
 			expect(GameConfig.effects.guardShieldActivationEmitCount > 0).to.equal(true)
 		end)
 
+		it("configures an adaptive R15 sack mount", function()
+			expect(GameConfig.sack.templateName).to.equal("KarungModel")
+			expect(GameConfig.sack.partName).to.equal("Karung")
+			expect(GameConfig.sack.topHeightRatio > 0).to.equal(true)
+			expect(GameConfig.sack.maximumVerticalScale > GameConfig.sack.minimumVerticalScale).to.equal(
+				true
+			)
+			expect(GameConfig.sack.minimumWidthStuds > 0).to.equal(true)
+			expect(GameConfig.sack.maximumWidthStuds > GameConfig.sack.minimumWidthStuds).to.equal(
+				true
+			)
+			expect(type(GameConfig.sack.originalTransparencyAttribute)).to.equal("string")
+		end)
+
 		it("configures a short Miss recovery", function()
 			expect(GameConfig.movement.missRecoverySeconds).to.equal(0.65)
 		end)

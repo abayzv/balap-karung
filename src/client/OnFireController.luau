@@ -172,6 +172,7 @@ function OnFireController.Start()
 
 	local function applyOnFire()
 		local onFire = player:GetAttribute("OnFire") == true
+			and player:GetAttribute("RaceStatus") == "Racing"
 		local camera = Workspace.CurrentCamera
 		local cameraConfig = GameConfig.speed.onFireCamera
 		if onFire and not effectWasOnFire and displayScale then
@@ -266,6 +267,7 @@ function OnFireController.Start()
 
 	player:GetAttributeChangedSignal("OnFireProgress"):Connect(tweenProgress)
 	player:GetAttributeChangedSignal("OnFire"):Connect(applyOnFire)
+	player:GetAttributeChangedSignal("RaceStatus"):Connect(applyOnFire)
 	player:GetAttributeChangedSignal("IsRace"):Connect(updateVisibility)
 	Workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(applyOnFire)
 	playerGui.ChildAdded:Connect(function(child)

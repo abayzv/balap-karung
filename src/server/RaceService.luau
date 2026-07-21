@@ -10,6 +10,7 @@ local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local ObstacleMechanic = require(ReplicatedStorage.Shared.ObstacleMechanic)
 local Reaction = require(ReplicatedStorage.Shared.Reaction)
 local Speed = require(ReplicatedStorage.Shared.Speed)
+local SackService = require(script.Parent.SackService)
 local TrackService = require(script.Parent.TrackService)
 
 local RACER_COLLISION_GROUP = "BalapKarungRacers"
@@ -175,6 +176,7 @@ local function updateJumpState(player, character)
 end
 
 local function restoreLobbyCharacter(player, character)
+	SackService.Detach(character)
 	local humanoid = character:FindFirstChildOfClass("Humanoid")
 	local root = character:FindFirstChild("HumanoidRootPart")
 	if humanoid then
@@ -286,8 +288,9 @@ local function updateGuardShield(player, character)
 	end
 end
 
-function RaceService.new()
+function RaceService.new(dataService)
 	local self = setmetatable({}, RaceService)
+	self._dataService = dataService
 	self._raceId = 0
 	self._eventId = 0
 	self._finishCount = 0
@@ -448,6 +451,7 @@ function RaceService:_prepareRace(eligiblePlayers)
 		if not humanoid or not root then
 			continue
 		end
+		SackService.Attach(character)
 
 		local lane = activeTrack.lanes[firstLaneIndex + playerIndex - 1]
 		local spawn = lane.spawn
@@ -512,6 +516,7 @@ function RaceService:_returnPlayersToLobby()
 
 		local character = player.Character
 		if character then
+			SackService.Detach(character)
 			moveCharacterToLobby(character)
 		end
 		setPlayerDefaults(player)
@@ -1099,9 +1104,13 @@ function RaceService:_finishRacer(racer)
 	racer.player:SetAttribute("RaceProgress", 1)
 	racer.player:SetAttribute("FinishTime", finishTime)
 	racer.player:SetAttribute("Rank", self._finishCount)
+	if self._dataService then
+		self._dataService:RecordRaceResult(racer.player, self._finishCount == 1)
+	end
 	racer.player:SetAttribute("RaceStatus", "Finished")
 	racer.player:SetAttribute("IsRecovering", false)
 	racer.player:SetAttribute("GuardReady", false)
+	self:_expireOnFire(racer)
 	racer.speedMultiplier = 1
 	racer.boostEndsAt = 0
 	racer.player:SetAttribute("SpeedMultiplier", 1)
@@ -1254,19 +1263,17 @@ function RaceService:_buildPodiumResults()
 	}
 end
 
-function RaceService:_runRace(eligiblePlayers, skipRaceCountdown)
+function RaceService:_runRace(eligiblePlayers)
 	if not self:_prepareRace(eligiblePlayers) then
 		return
 	end
 
-	if not skipRaceCountdown then
-		for countdown = GameConfig.race.countdownSeconds, 1, -1 do
-			self:_setState("Countdown", countdown)
-			task.wait(1)
-		end
-		self:_setState("Countdown", 0)
-		task.wait(GameConfig.race.startSignalSeconds)
+	for countdown = GameConfig.race.countdownSeconds, 1, -1 do
+		self:_setState("Countdown", countdown)
+		task.wait(1)
 	end
+	self:_setState("Countdown", 0)
+	task.wait(GameConfig.race.startSignalSeconds)
 
 	self:_setState("Racing")
 	self._raceStartedAt = Workspace:GetServerTimeNow()
@@ -1326,6 +1333,11 @@ function RaceService:Start()
 		player:GetAttributeChangedSignal("IsRace"):Connect(function()
 			if player.Character then
 				updateJumpState(player, player.Character)
+				if player:GetAttribute("IsRace") == true then
+					SackService.Attach(player.Character)
+				else
+					SackService.Detach(player.Character)
+				end
 			end
 		end)
 
@@ -1337,7 +1349,9 @@ function RaceService:Start()
 				end
 				if player:GetAttribute("IsRace") == true then
 					updateJumpState(player, character)
+					SackService.Attach(character)
 				else
+					SackService.Detach(character)
 					restoreLobbyCharacter(player, character)
 					moveCharacterToLobby(character)
 				end
@@ -1404,7 +1418,7 @@ function RaceService:Start()
 					Workspace:SetAttribute("Countdown", remaining)
 					task.wait(1)
 				end
-				self:_runRace(Players:GetPlayers(), true)
+				self:_runRace(Players:GetPlayers())
 				continue
 			end
 

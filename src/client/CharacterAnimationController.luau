@@ -95,9 +95,9 @@ function CharacterAnimationController.Start()
 		local defaultAnimate = character:WaitForChild("Animate", 2)
 
 		local idleTrack =
-			loadTrack(animator, GameConfig.animations.idle, Enum.AnimationPriority.Idle, true)
+			loadTrack(animator, GameConfig.animations.idle, Enum.AnimationPriority.Action4, true)
 		local walkTrack =
-			loadTrack(animator, GameConfig.animations.walk, Enum.AnimationPriority.Movement, true)
+			loadTrack(animator, GameConfig.animations.walk, Enum.AnimationPriority.Action4, true)
 		local fallTrack =
 			loadTrack(animator, GameConfig.animations.fall, Enum.AnimationPriority.Action, false)
 		if idleTrack then
@@ -121,9 +121,13 @@ function CharacterAnimationController.Start()
 
 		local function updateTrack()
 			local raceStatus = player:GetAttribute("RaceStatus")
-			local isOnTrack = raceStatus == "Countdown"
-				or raceStatus == "Racing"
-				or raceStatus == "Finished"
+			local isRace = player:GetAttribute("IsRace") == true
+			local isOnTrack = isRace
+				and (
+					raceStatus == "Countdown"
+					or raceStatus == "Racing"
+					or raceStatus == "Finished"
+				)
 
 			if not isOnTrack then
 				if idleTrack and idleTrack.IsPlaying then
@@ -202,6 +206,10 @@ function CharacterAnimationController.Start()
 		table.insert(
 			characterConnections,
 			player:GetAttributeChangedSignal("RaceStatus"):Connect(updateTrack)
+		)
+		table.insert(
+			characterConnections,
+			player:GetAttributeChangedSignal("IsRace"):Connect(updateTrack)
 		)
 		table.insert(
 			characterConnections,

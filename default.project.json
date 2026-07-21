@@ -9,7 +9,8 @@
         "$path": "Packages"
       },
       "Shared": {
-        "$path": "src/shared"
+        "$path": "src/shared",
+        "$ignoreUnknownInstances": true
       }
     },
     "ServerStorage": {
@@ -39,6 +40,9 @@
     },
     "ServerScriptService": {
       "$className": "ServerScriptService",
+      "ServerPackages": {
+        "$path": "ServerPackages"
+      },
       "Server": {
         "$path": "src/server"
       }

@@ -1,6 +1,7 @@
 # Generated dependencies
 /Packages/
 /DevPackages/
+/ServerPackages/
 
 # Generated build artifacts
 /build/

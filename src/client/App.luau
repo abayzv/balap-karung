@@ -126,6 +126,21 @@ local function feedbackColor(text)
 	return Color3.fromRGB(255, 255, 255)
 end
 
+local function feedbackOutlineColor(text)
+	if text == "PERFECT" or text == "TRIPLE PERFECT" then
+		return Color3.fromRGB(103, 55, 184)
+	elseif text == "GOOD" or text == "TRIPLE GOOD" then
+		return Color3.fromRGB(24, 139, 91)
+	elseif text == "EARLY" then
+		return Color3.fromRGB(37, 74, 139)
+	elseif text == "MISS" then
+		return Color3.fromRGB(133, 34, 68)
+	elseif text == "MIXED COMBO" then
+		return Color3.fromRGB(104, 54, 157)
+	end
+	return Color3.fromRGB(45, 108, 156)
+end
+
 local function comboText(verdict)
 	if verdict == "TriplePerfect" then
 		return "TRIPLE PERFECT"
@@ -347,14 +362,22 @@ local function App(props)
 		Feedback = feedback and e("TextLabel", {
 			AnchorPoint = Vector2.new(0.5, 0.5),
 			BackgroundTransparency = 1,
-			Font = Enum.Font.GothamBlack,
+			Font = Enum.Font.LuckiestGuy,
 			Position = UDim2.fromScale(feedback.startX, feedback.startY),
-			Size = UDim2.fromOffset(300, 64),
+			Size = UDim2.fromOffset(360, 72),
 			Text = feedback.text,
 			TextColor3 = feedbackColor(feedback.text),
-			TextSize = 36,
-			TextStrokeTransparency = 0.4,
+			TextSize = 38,
+			TextStrokeTransparency = 1,
 			ref = feedbackLabelRef,
+		}, {
+			Outline = e("UIStroke", {
+				ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual,
+				Color = feedbackOutlineColor(feedback.text),
+				LineJoinMode = Enum.LineJoinMode.Round,
+				Thickness = 2.5,
+				Transparency = 0.04,
+			}),
 		}) or nil,
 	}
 	for id, reaction in reactions do
