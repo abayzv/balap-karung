@@ -1,0 +1,31 @@
+return function()
+	local ReplicatedStorage = game:GetService("ReplicatedStorage")
+	local LeaderboardFormat = require(ReplicatedStorage.Shared.LeaderboardFormat)
+
+	describe("LeaderboardFormat", function()
+		it("resolves profile and leaderstat aliases", function()
+			expect(LeaderboardFormat.resolveField("win")).to.equal("Win")
+			expect(LeaderboardFormat.resolveField("PLAYTIME")).to.equal("Playtime")
+			expect(LeaderboardFormat.resolveField("winstreak")).to.equal("BestWinStreak")
+			expect(LeaderboardFormat.resolveField("best_win_streak")).to.equal("BestWinStreak")
+			expect(LeaderboardFormat.resolveField("current_win_streak")).to.equal("WinStreak")
+		end)
+
+		it("never lowers a persisted best win streak", function()
+			expect(LeaderboardFormat.mergePlayerValue("BestWinStreak", 8, 0)).to.equal(8)
+			expect(LeaderboardFormat.mergePlayerValue("BestWinStreak", 8, 10)).to.equal(10)
+			expect(LeaderboardFormat.mergePlayerValue("Win", 8, 3)).to.equal(3)
+		end)
+
+		it("formats counters with separators", function()
+			expect(LeaderboardFormat.formatNumber(0)).to.equal("0")
+			expect(LeaderboardFormat.formatNumber(1234567)).to.equal("1,234,567")
+		end)
+
+		it("formats playtime compactly", function()
+			expect(LeaderboardFormat.formatValue("playtime", 45)).to.equal("45s")
+			expect(LeaderboardFormat.formatValue("playtime", 3660)).to.equal("1h 1m")
+			expect(LeaderboardFormat.formatValue("playtime", 90000)).to.equal("1d 1h")
+		end)
+	end)
+end

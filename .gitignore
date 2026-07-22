@@ -1,0 +1,19 @@
+# Generated dependencies
+/Packages/
+/DevPackages/
+/ServerPackages/
+
+# Generated build artifacts
+/build/
+/sourcemap.json
+
+# Roblox Studio files
+*.rbxl
+*.rbxlx
+*.rbxm
+*.rbxmx
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+*.swp
