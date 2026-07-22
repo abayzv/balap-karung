@@ -6,6 +6,7 @@ local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
+local ImpactFeedback = require(ReplicatedStorage.Shared.ImpactFeedback)
 local SoundController = require(script.Parent.SoundController)
 
 local GuardController = {}
@@ -84,7 +85,9 @@ function GuardController.Start(submitRemote, broadcastRemote, crashRemote)
 		end
 
 		animateBarrier(barrier, payload.throwDirection, payload.forward)
-		SoundController.Play("guardSwing")
+		if ImpactFeedback.shouldPlaySound(player.UserId, payload.soundUserId, false) then
+			SoundController.Play("guardSwing")
+		end
 	end)
 
 	RunService.RenderStepped:Connect(function()

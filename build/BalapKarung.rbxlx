@@ -58296,11 +58296,11 @@ return table.freeze(CoinEconomy)
           <string name="Name">GameConfig</string>
           <string name="Source"><![CDATA[local GameConfig = {
 	TEST_MODE = false,
-	TEST_TRACK_ID = "Road",
+	TEST_TRACK_ID = "Lava",
 	TEST_COUNTDOWN = 5,
 	projectName = "BalapKarung",
 	data = {
-		storeName = "BalapKarungPlayerData_v1",
+		storeName = "BalapKarungPlayerData_v2",
 		useMockStoreInStudio = false,
 		playtimeTickSeconds = 1,
 	},
@@ -58319,9 +58319,32 @@ return table.freeze(CoinEconomy)
 		avatarTag = "LeaderboardAvatar",
 		surfaceGuiName = "BalapKarungLeaderboardUI",
 		orderedStorePrefix = "BalapKarungLeaderboard",
+		initialRefreshDelaySeconds = 3,
+		minimumRefreshGapSeconds = 5,
 		refreshIntervalSeconds = 60,
 		writeIntervalSeconds = 90,
+		initialWriteDelaySeconds = 15,
+		minimumValue = 1,
 		maximumItems = 100,
+		excludedUserIds = { 9154250170 },
+		avatarAnimationId = "rbxassetid://507771019",
+	},
+	environmentVfx = {
+		leaf = {
+			enabled = true,
+			templateName = "Leaf Particle ",
+			runtimeName = "BalapKarungLeafVFX",
+			spawnRate = 4,
+			minimumDistance = 20,
+			maximumDistance = 60,
+			minimumPitchDegrees = -30,
+			maximumPitchDegrees = 70,
+			maximumYawDegrees = 80,
+			windDirection = Vector3.new(1, 0, 0.3),
+			windSpeed = 20,
+			windPower = 0.5,
+			fallAcceleration = 1.5,
+		},
 	},
 	race = {
 		minimumPlayers = 2,
@@ -58351,11 +58374,15 @@ return table.freeze(CoinEconomy)
 	},
 	movement = {
 		missRecoverySeconds = 0.65,
+		smoothCorrectionThresholdStuds = 1,
+		snapCorrectionThresholdStuds = 10,
+		smoothCorrectionRate = 3,
+		maximumExtrapolationSeconds = 0.5,
 	},
 	speed = {
 		normalValue = 32,
-		onFireValue = 44,
-		onFireDurationSeconds = 3,
+		onFireValue = 40,
+		onFireDurationSeconds = 2,
 		verdictBoostDurationSeconds = {
 			Good = 1.2,
 			Perfect = 1.7,
@@ -58408,7 +58435,8 @@ return table.freeze(CoinEconomy)
 		failedGuardPromptResumeSeconds = 0.75,
 		promptSuppressionPollSeconds = 0.05,
 		guardRaycastDistanceStuds = 16,
-		guardServerValidationDistanceStuds = 24,
+		guardBaseValidationDistanceStuds = 16,
+		guardMaxValidationDistanceStuds = 32,
 		guardServerFallbackStuds = 8,
 		guardCrashLeadStuds = 3,
 		characterCrashHitboxSize = Vector3.new(4, 5, 3.5),
@@ -58440,7 +58468,8 @@ return table.freeze(CoinEconomy)
 		promptPositionAttempts = 40,
 		impactRaycastDistanceStuds = 12,
 		failedImpactDistanceStuds = 3,
-		serverValidationDistanceStuds = 20,
+		baseValidationDistanceStuds = 12,
+		maxValidationDistanceStuds = 28,
 		serverFallbackStuds = 2,
 		minimumObstacleSpacingStuds = 20,
 		maximumObstacleSpacingStuds = 32,
@@ -58452,19 +58481,74 @@ return table.freeze(CoinEconomy)
 		debrisSpreadRandomness = 0.9,
 		debrisForwardRandomness = 0.4,
 	},
+	lavaWave = {
+		trackId = "Lava",
+		templateName = "LavaWave",
+		runtimeFolderName = "LavaWaves",
+		skillId = "LavaJump",
+		firstWaveDelaySeconds = 5,
+		minimumIntervalSeconds = 8,
+		maximumIntervalSeconds = 11,
+		speedStudsPerSecond = 70,
+		promptLeadSeconds = 1.15,
+		reactionDurationSeconds = 1,
+		lateralPaddingStuds = 8,
+		cleanupPaddingStuds = 20,
+		impactToleranceStuds = 2.5,
+		visualHeightStuds = 3.5,
+		visualDepthStuds = 5,
+		visualYOffsetStuds = 1.5,
+		variants = {
+			{
+				id = "Normal",
+				weight = 55,
+				speedMultiplier = 1,
+				reactionDurationMultiplier = 1,
+				color = Color3.fromRGB(255, 70, 12),
+				waveCount = 1,
+			},
+			{
+				id = "Fast",
+				weight = 30,
+				speedMultiplier = 1.35,
+				reactionDurationMultiplier = 0.85,
+				color = Color3.fromRGB(255, 180, 20),
+				waveCount = 1,
+			},
+			{
+				id = "Double",
+				weight = 15,
+				speedMultiplier = 1.05,
+				reactionDurationMultiplier = 0.95,
+				color = Color3.fromRGB(255, 35, 85),
+				waveCount = 2,
+				waveGapSeconds = 1.35,
+			},
+		},
+	},
 	reactionWindow = {
 		skillId = "Jump",
 		earlyEndRatio = 0.55,
 		perfectStartRatio = 0.7,
 		perfectEndRatio = 0.85,
 		scheduleLeadSeconds = 0.25,
-		maximumClockDifferenceSeconds = 1,
+		maximumClockDifferenceSeconds = 1.5,
 		minimumChainLength = 1,
 		maximumChainLength = 3,
 		minimumScreenX = 0.28,
 		maximumScreenX = 0.72,
 		minimumScreenY = 0.28,
 		maximumScreenY = 0.82,
+	},
+	networking = {
+		pingIntervalSeconds = 10,
+		initialOneWayLatencySeconds = 0.1,
+		pingSmoothingAlpha = 0.3,
+		maximumOneWayLatencySeconds = 0.5,
+		graceMultiplier = 0.6,
+		maximumGraceSeconds = 0.3,
+		minimumLeadSeconds = 0.05,
+		minimumLatePromptSeconds = 0.15,
 	},
 	animations = {
 		idle = "rbxassetid://92750155061995",
@@ -58491,22 +58575,27 @@ return table.freeze(CoinEconomy)
 		motorName = "BalapKarungSackMotor",
 		mountedAttribute = "BalapKarungMountedSack",
 		originalTransparencyAttribute = "BalapKarungOriginalTransparency",
-		topHeightRatio = 0.25,
-		bottomPaddingStuds = 0.1,
-		widthPaddingStuds = 0.2,
-		depthPaddingStuds = 0.15,
-		widthMultiplier = 1.15,
-		depthMultiplier = 1.35,
-		minimumWidthStuds = 2,
-		minimumDepthStuds = 1.35,
-		maximumWidthStuds = 3,
-		maximumDepthStuds = 2,
-		widthToHeightRatio = 0.65,
-		depthToHeightRatio = 0.4,
-		forwardOffsetStuds = 0,
-		minimumHeightStuds = 1.5,
-		minimumVerticalScale = 0.5,
-		maximumVerticalScale = 4,
+		sizeClassAttribute = "BalapKarungSackSizeClass",
+		classificationValueAttribute = "BalapKarungClassificationHipHeight",
+		sizeClasses = {
+			{
+				name = "Short",
+				maximumHipHeight = 1.81,
+				size = Vector3.new(1.595, 2.183, 1.112),
+				mountOffset = Vector3.new(0, -0.948, 0),
+			},
+			{
+				name = "Standard",
+				maximumHipHeight = 3.4,
+				size = Vector3.new(2.504, 2.976, 1.509),
+				mountOffset = Vector3.new(0, -1.029, 0),
+			},
+			{
+				name = "Tall",
+				size = Vector3.new(2.36, 5.702, 1.622),
+				mountOffset = Vector3.new(0, -2.572, 0),
+			},
+		},
 		rotationDegrees = Vector3.new(0, 0, 0),
 	},
 	sounds = {
@@ -58576,21 +58665,23 @@ return table.freeze(CoinEconomy)
 	},
 	ui = {
 		dynamicScaleTag = "DynamicScale",
+		feedback = {
+			strokeEnabled = false,
+		},
 		podiumCinematic = {
 			templateName = "Cinematics",
 			localSceneName = "LocalPodiumCinematic",
 			cameraTag = "PodiumCamera",
-			characterSpotTag = "ResultsCharacterSpot",
 			skipDelaySeconds = 1,
-			characterHeightOffset = 0,
-			characterScale = 3.5,
+			avatarCenterX = 0.76,
+			avatarCenterY = 0.5,
+			avatarHeightScale = 0.34,
+			avatarStrokeThickness = 7,
 			titles = {
 				First = "JUARA!",
 				Podium = "PODIUM!",
 				Default = "NICE TRY!",
 			},
-			danceR15AnimationId = "rbxassetid://507771019",
-			danceR6AnimationId = "rbxassetid://182435998",
 		},
 		finishNotification = {
 			impactText = "FINISH!",
@@ -58682,6 +58773,14 @@ return table.freeze(CoinEconomy)
 				strokeColor = Color3.fromRGB(255, 255, 255),
 				glowColor = Color3.fromRGB(255, 38, 38),
 			},
+			LavaJump = {
+				label = "Jump",
+				icon = "rbxassetid://14549056586",
+				gradientStart = Color3.fromRGB(255, 191, 35),
+				gradientEnd = Color3.fromRGB(185, 29, 0),
+				strokeColor = Color3.fromRGB(255, 239, 167),
+				glowColor = Color3.fromRGB(255, 87, 25),
+			},
 		},
 	},
 }
@@ -58692,6 +58791,108 @@ return table.freeze(GameConfig)
       </Item>
       <Item class="ModuleScript" referent="332">
         <Properties>
+          <string name="Name">ImpactFeedback</string>
+          <string name="Source"><![CDATA[local ImpactFeedback = {}
+
+function ImpactFeedback.shouldPlaySound(localUserId, soundUserId, alreadyPlayedLocally)
+	return alreadyPlayedLocally ~= true
+		and type(localUserId) == "number"
+		and type(soundUserId) == "number"
+		and localUserId == soundUserId
+end
+
+return table.freeze(ImpactFeedback)
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="333">
+        <Properties>
+          <string name="Name">LavaWaveMechanic</string>
+          <string name="Source"><![CDATA[local LavaWaveMechanic = {}
+
+local function horizontalUnit(vector)
+	local horizontal = Vector3.new(vector.X, 0, vector.Z)
+	if horizontal.Magnitude < 0.001 then
+		return nil
+	end
+	return horizontal.Unit
+end
+
+function LavaWaveMechanic.geometryForLanes(lanes, finish, lateralPaddingStuds, cleanupPaddingStuds)
+	if #lanes == 0 then
+		return nil
+	end
+
+	local averageSpawn = Vector3.zero
+	local averageTarget = Vector3.zero
+	for _, lane in lanes do
+		averageSpawn += lane.spawn.Position
+		averageTarget += lane.moveTarget.Position
+	end
+	averageSpawn /= #lanes
+	averageTarget /= #lanes
+
+	local direction = horizontalUnit(averageSpawn - averageTarget)
+	if not direction then
+		return nil
+	end
+	local right = Vector3.yAxis:Cross(direction).Unit
+	local minimumLateral = math.huge
+	local maximumLateral = -math.huge
+	local maximumTravel = 0
+	for _, lane in lanes do
+		local lateral = (lane.spawn.Position - averageTarget):Dot(right)
+		minimumLateral = math.min(minimumLateral, lateral)
+		maximumLateral = math.max(maximumLateral, lateral)
+		maximumTravel =
+			math.max(maximumTravel, (lane.spawn.Position - averageTarget):Dot(direction))
+	end
+
+	return {
+		origin = Vector3.new(averageTarget.X, averageSpawn.Y, averageTarget.Z),
+		direction = direction,
+		right = right,
+		width = maximumLateral - minimumLateral + lateralPaddingStuds * 2,
+		travelDistance = maximumTravel + cleanupPaddingStuds,
+		finish = finish,
+	}
+end
+
+function LavaWaveMechanic.timeToImpact(waveDistance, racerDistance, waveSpeed, racerForwardSpeed)
+	local gap = racerDistance - waveDistance
+	if gap <= 0 then
+		return 0
+	end
+	return gap / math.max(0.001, waveSpeed + racerForwardSpeed)
+end
+
+function LavaWaveMechanic.variantForRoll(variants, roll)
+	assert(#variants > 0, "Lava wave membutuhkan minimal satu variant")
+	local totalWeight = 0
+	for _, variant in variants do
+		totalWeight += math.max(0, variant.weight or 0)
+	end
+	if totalWeight <= 0 then
+		return variants[1]
+	end
+
+	local target = math.clamp(roll, 0, 0.999999) * totalWeight
+	local accumulated = 0
+	for _, variant in variants do
+		accumulated += math.max(0, variant.weight or 0)
+		if target < accumulated then
+			return variant
+		end
+	end
+	return variants[#variants]
+end
+
+return LavaWaveMechanic
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="334">
+        <Properties>
           <string name="Name">LeaderboardFormat</string>
           <string name="Source"><![CDATA[local LeaderboardFormat = {}
 
@@ -58699,8 +58900,10 @@ local FIELD_ALIASES = {
 	win = "Win",
 	wins = "Win",
 	playtime = "Playtime",
-	winstreak = "WinStreak",
+	winstreak = "BestWinStreak",
 	bestwinstreak = "BestWinStreak",
+	currentwinstreak = "WinStreak",
+	activewinstreak = "WinStreak",
 	coins = "Coins",
 	coin = "Coins",
 }
@@ -58728,6 +58931,17 @@ function LeaderboardFormat.formatNumber(value)
 	return formatted
 end
 
+function LeaderboardFormat.mergePlayerValue(field, persistentValue, liveValue)
+	if liveValue == nil then
+		return persistentValue
+	end
+	local normalizedLive = math.max(0, math.floor(tonumber(liveValue) or 0))
+	if field == "BestWinStreak" then
+		return math.max(tonumber(persistentValue) or 0, normalizedLive)
+	end
+	return normalizedLive
+end
+
 function LeaderboardFormat.formatValue(dataKey, value)
 	local numericValue = math.max(0, math.floor(tonumber(value) or 0))
 	if LeaderboardFormat.normalizeDataKey(dataKey) ~= "playtime" then
@@ -58750,73 +58964,157 @@ return table.freeze(LeaderboardFormat)
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="333">
+      <Item class="ModuleScript" referent="335">
+        <Properties>
+          <string name="Name">LeaderboardPolicy</string>
+          <string name="Source"><![CDATA[local LeaderboardPolicy = {}
+
+function LeaderboardPolicy.isExcludedUserId(
+	userId,
+	configuredUserIds,
+	isUserOwnedExperience,
+	creatorId
+)
+	local numericUserId = tonumber(userId)
+	if not numericUserId then
+		return false
+	end
+	if isUserOwnedExperience == true and numericUserId == tonumber(creatorId) then
+		return true
+	end
+	for _, configuredUserId in configuredUserIds or {} do
+		if numericUserId == tonumber(configuredUserId) then
+			return true
+		end
+	end
+	return false
+end
+
+return table.freeze(LeaderboardPolicy)
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="336">
+        <Properties>
+          <string name="Name">MovementPrediction</string>
+          <string name="Source"><![CDATA[local MovementPrediction = {}
+
+function MovementPrediction.advanceDistance(distance, speed, deltaTime, trackLength)
+	local currentDistance = math.max(0, tonumber(distance) or 0)
+	local forwardSpeed = math.max(0, tonumber(speed) or 0)
+	local elapsed = math.max(0, tonumber(deltaTime) or 0)
+	local maximumDistance = math.max(0, tonumber(trackLength) or 0)
+	return math.clamp(currentDistance + forwardSpeed * elapsed, 0, maximumDistance)
+end
+
+function MovementPrediction.extrapolateDistance(
+	distance,
+	speed,
+	updatedAt,
+	now,
+	maximumExtrapolation,
+	trackLength
+)
+	local elapsed = math.clamp(
+		(tonumber(now) or 0) - (tonumber(updatedAt) or 0),
+		0,
+		math.max(0, tonumber(maximumExtrapolation) or 0)
+	)
+	return MovementPrediction.advanceDistance(distance, speed, elapsed, trackLength)
+end
+
+function MovementPrediction.progressAt(position, startOrigin, forward, trackLength)
+	local maximumDistance = math.max(0, tonumber(trackLength) or 0)
+	if maximumDistance == 0 or forward.Magnitude < 0.001 then
+		return 0
+	end
+	return math.clamp((position - startOrigin):Dot(forward.Unit), 0, maximumDistance)
+end
+
+function MovementPrediction.reconciliationMode(
+	localDistance,
+	authoritativeDistance,
+	smoothThreshold,
+	snapThreshold
+)
+	local difference = authoritativeDistance - localDistance
+	local absoluteDifference = math.abs(difference)
+	if absoluteDifference > snapThreshold then
+		return "Snap", difference
+	elseif absoluteDifference > smoothThreshold then
+		return "Smooth", difference
+	end
+	return "None", difference
+end
+
+function MovementPrediction.smoothingAlpha(deltaTime, correctionRate)
+	return math.clamp(math.max(0, deltaTime) * math.max(0, correctionRate), 0, 1)
+end
+
+return table.freeze(MovementPrediction)
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="337">
         <Properties>
           <string name="Name">MusicCatalog</string>
           <string name="Source"><![CDATA[local MusicCatalog = {
 	{
 		id = "balap-karung",
-		title = "Balap Karung Theme",
-		artist = "Balap Karung",
+		title = "Bendera",
+		artist = "Cokelat",
 		soundId = 108881053322600,
 		accent = Color3.fromRGB(255, 65, 56),
 	},
 	{
-		id = "brazil",
-		title = "Music Brazil",
-		artist = "Unknown Artist",
-		soundId = 73339704385207,
-		accent = Color3.fromRGB(124, 86, 255),
-	},
-	{
 		id = "soft-keys-1",
-		title = "Piano Music I",
-		artist = "Unknown Artist",
+		title = "Naykila So",
+		artist = "Naykila",
 		soundId = 81931065344784,
 		accent = Color3.fromRGB(72, 190, 205),
 	},
 	{
 		id = "soft-keys-2",
-		title = "Piano Music II",
-		artist = "Unknown Artist",
+		title = "Nggak Dulu",
+		artist = "Akbar",
 		soundId = 109816834964106,
 		accent = Color3.fromRGB(72, 190, 205),
 	},
 	{
 		id = "soft-keys-3",
-		title = "Piano Music III",
+		title = "Kota ini tak sama tanpamu",
 		artist = "Unknown Artist",
 		soundId = 112858432286509,
 		accent = Color3.fromRGB(72, 190, 205),
 	},
 	{
 		id = "pop",
-		title = "Pop Music",
-		artist = "Unknown Artist",
-		soundId = 122046456362112,
+		title = "Everything U Are",
+		artist = "Hindia",
+		soundId = 121676583384188,
 		accent = Color3.fromRGB(0, 194, 255),
 	},
-	{
-		id = "kpop",
-		title = "K-Pop Music",
-		artist = "Unknown Artist",
-		soundId = 130721206402716,
-		accent = Color3.fromRGB(236, 72, 153),
-	},
-	{
-		id = "jazz",
-		title = "Jazz Music",
-		artist = "Unknown Artist",
-		soundId = 110267939344127,
-		accent = Color3.fromRGB(245, 171, 38),
-	},
+	-- {
+	-- 	id = "kpop",
+	-- 	title = "K-Pop Music",
+	-- 	artist = "Unknown Artist",
+	-- 	soundId = 130721206402716,
+	-- 	accent = Color3.fromRGB(236, 72, 153),
+	-- },
+	-- {
+	-- 	id = "jazz",
+	-- 	title = "Jazz Music",
+	-- 	artist = "Unknown Artist",
+	-- 	soundId = 110267939344127,
+	-- 	accent = Color3.fromRGB(245, 171, 38),
+	-- },
 }
 
 return table.freeze(MusicCatalog)
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="334">
+      <Item class="ModuleScript" referent="338">
         <Properties>
           <string name="Name">MusicPlayerState</string>
           <string name="Source"><![CDATA[local MusicPlayerState = {}
@@ -58901,7 +59199,69 @@ return table.freeze(MusicPlayerState)
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="335">
+      <Item class="ModuleScript" referent="339">
+        <Properties>
+          <string name="Name">NetworkTiming</string>
+          <string name="Source"><![CDATA[local NetworkTiming = {}
+
+function NetworkTiming.smoothLatency(previousLatency, sampleLatency, alpha, maximumLatency)
+	local previous = math.clamp(tonumber(previousLatency) or 0, 0, maximumLatency)
+	local sample = math.clamp(tonumber(sampleLatency) or previous, 0, maximumLatency)
+	return previous * (1 - alpha) + sample * alpha
+end
+
+function NetworkTiming.leadSeconds(oneWayLatency, baseLeadSeconds, config)
+	local latency = math.clamp(
+		oneWayLatency or config.initialOneWayLatencySeconds,
+		0,
+		config.maximumOneWayLatencySeconds
+	)
+	return math.max(config.minimumLeadSeconds, baseLeadSeconds or 0, latency)
+end
+
+function NetworkTiming.graceSeconds(oneWayLatency, config)
+	local latency = math.clamp(
+		oneWayLatency or config.initialOneWayLatencySeconds,
+		0,
+		config.maximumOneWayLatencySeconds
+	)
+	return math.min(latency * config.graceMultiplier, config.maximumGraceSeconds)
+end
+
+function NetworkTiming.validationDistance(oneWayLatency, effectiveSpeed, baseDistance, maxDistance)
+	local latency = math.max(0, tonumber(oneWayLatency) or 0)
+	local speed = math.max(0, tonumber(effectiveSpeed) or 0)
+	local minimum = math.max(0, tonumber(baseDistance) or 0)
+	local maximum = math.max(minimum, tonumber(maxDistance) or minimum)
+	return math.min(minimum + speed * latency, maximum)
+end
+
+function NetworkTiming.resolveAt(closesAt, graceSeconds)
+	return closesAt + math.max(0, graceSeconds or 0)
+end
+
+function NetworkTiming.isTimestampPlausible(serverNow, clientTimestamp, maximumDifference)
+	return type(clientTimestamp) == "number"
+		and math.abs(serverNow - clientTimestamp) <= maximumDifference
+end
+
+function NetworkTiming.reactionSeconds(event, clientPressedAt)
+	local grace = event.graceSeconds or 0
+	if clientPressedAt < event.opensAt - grace or clientPressedAt > event.closesAt then
+		return nil
+	end
+	return math.max(0, clientPressedAt - event.opensAt)
+end
+
+function NetworkTiming.shouldDisplayPrompt(receivedAt, opensAt, duration, minimumRemaining)
+	return opensAt + duration - receivedAt >= minimumRemaining
+end
+
+return table.freeze(NetworkTiming)
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="340">
         <Properties>
           <string name="Name">ObstacleMechanic</string>
           <string name="Source"><![CDATA[local ObstacleMechanic = {}
@@ -58969,7 +59329,7 @@ return table.freeze(ObstacleMechanic)
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="336">
+      <Item class="ModuleScript" referent="341">
         <Properties>
           <string name="Name">PlayerData</string>
           <string name="Source"><![CDATA[local PlayerData = {}
@@ -59056,7 +59416,7 @@ return PlayerData
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="337">
+      <Item class="ModuleScript" referent="342">
         <Properties>
           <string name="Name">Reaction</string>
           <string name="Source"><![CDATA[local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -59089,7 +59449,25 @@ return table.freeze(Reaction)
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="338">
+      <Item class="ModuleScript" referent="343">
+        <Properties>
+          <string name="Name">SackSizing</string>
+          <string name="Source"><![CDATA[local SackSizing = {}
+
+function SackSizing.getSizeClass(sizeClasses, hipHeight)
+	for _, sizeClass in sizeClasses do
+		if not sizeClass.maximumHipHeight or hipHeight <= sizeClass.maximumHipHeight then
+			return sizeClass
+		end
+	end
+	error("Sack size classes membutuhkan preset fallback")
+end
+
+return SackSizing
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="344">
         <Properties>
           <string name="Name">Speed</string>
           <string name="Source"><![CDATA[local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -59138,7 +59516,7 @@ return table.freeze(Speed)
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="339">
+      <Item class="ModuleScript" referent="345">
         <Properties>
           <string name="Name">TrailCatalog</string>
           <string name="Source"><![CDATA[local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -59156,6 +59534,7 @@ local DEFAULT_TRAIL = {
 	price = 0,
 	colors = { Color3.fromRGB(150, 156, 170), Color3.fromRGB(230, 234, 242) },
 	order = -math.huge,
+	thumbnail = nil,
 }
 
 local function readAttribute(instance, names, fallback)
@@ -59184,6 +59563,26 @@ local function brighten(color)
 	)
 end
 
+function TrailCatalog.normalizeThumbnail(value)
+	if type(value) == "number" then
+		local assetId = math.floor(value)
+		return if assetId > 0 then `rbxassetid://{assetId}` else nil
+	elseif type(value) ~= "string" then
+		return nil
+	end
+
+	local trimmed = value:match("^%s*(.-)%s*$")
+	local lower = string.lower(trimmed)
+	local assetId = lower:match("^rbxassetid://(%d+)$")
+		or lower:match("^rbx:id[:/]*(%d+)$")
+		or lower:match("^rbx:(%d+)$")
+		or lower:match("^(%d+)$")
+	if not assetId or tonumber(assetId) <= 0 then
+		return nil
+	end
+	return `rbxassetid://{assetId}`
+end
+
 local function definitionFromPart(source)
 	local displayName = readAttribute(source, { "Name", "DisplayName" }, source.Name)
 	if type(displayName) ~= "string" or displayName == "" then
@@ -59202,6 +59601,9 @@ local function definitionFromPart(source)
 		description = description,
 		price = math.max(0, math.floor(price)),
 		colors = { color, brighten(color) },
+		thumbnail = TrailCatalog.normalizeThumbnail(
+			readAttribute(source, { "Thumbnail", "thumbnail" }, nil)
+		),
 		order = tonumber(readAttribute(source, { "Order", "LayoutOrder" }, 0)) or 0,
 		source = source,
 	}
@@ -59251,18 +59653,18 @@ return TrailCatalog
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Folder" referent="340">
+      <Item class="Folder" referent="346">
         <Properties>
           <string name="Name">Trails</string>
         </Properties>
       </Item>
     </Item>
   </Item>
-  <Item class="ServerScriptService" referent="341">
+  <Item class="ServerScriptService" referent="347">
     <Properties>
       <string name="Name">ServerScriptService</string>
     </Properties>
-    <Item class="Script" referent="342">
+    <Item class="Script" referent="348">
       <Properties>
         <string name="Name">Server</string>
         <token name="RunContext">0</token>
@@ -59287,7 +59689,7 @@ local raceService = RaceService.new(dataService)
 raceService:Start()
 ]]></string>
       </Properties>
-      <Item class="ModuleScript" referent="343">
+      <Item class="ModuleScript" referent="349">
         <Properties>
           <string name="Name">DataService</string>
           <string name="Source"><![CDATA[local Players = game:GetService("Players")
@@ -59485,7 +59887,7 @@ return DataService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="344">
+      <Item class="ModuleScript" referent="350">
         <Properties>
           <string name="Name">LeaderboardService</string>
           <string name="Source"><![CDATA[local CollectionService = game:GetService("CollectionService")
@@ -59498,11 +59900,21 @@ local Workspace = game:GetService("Workspace")
 
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local LeaderboardFormat = require(ReplicatedStorage.Shared.LeaderboardFormat)
+local LeaderboardPolicy = require(ReplicatedStorage.Shared.LeaderboardPolicy)
 
 local LeaderboardService = {}
 LeaderboardService.__index = LeaderboardService
 
 local AVATAR_MODEL_PREFIX = "LeaderboardCharacter_"
+
+local function isExcludedUserId(userId)
+	return LeaderboardPolicy.isExcludedUserId(
+		userId,
+		GameConfig.leaderboard.excludedUserIds,
+		game.CreatorType == Enum.CreatorType.User,
+		game.CreatorId
+	)
+end
 
 local function getTaggedDescendant(root, tag)
 	for _, instance in CollectionService:GetTagged(tag) do
@@ -59550,7 +59962,7 @@ local function createSurface(board, view)
 	surface.Name = GameConfig.leaderboard.surfaceGuiName
 	surface.Active = true
 	surface.Adornee = view
-	surface.AlwaysOnTop = false
+	surface.AlwaysOnTop = true
 	surface.CanvasSize = Vector2.new(1000, 1464)
 	surface.Face = getSurfaceFace(board, view)
 	surface.LightInfluence = 0
@@ -59594,7 +60006,7 @@ end
 local function makeLabel(parent, text, position, size, alignment)
 	local label = Instance.new("TextLabel")
 	label.BackgroundTransparency = 1
-	label.Font = Enum.Font.GothamBold
+	label.Font = Enum.Font.FredokaOne
 	label.Position = position
 	label.Size = size
 	label.Text = text
@@ -59604,8 +60016,8 @@ local function makeLabel(parent, text, position, size, alignment)
 	label.TextXAlignment = alignment
 	label.Parent = parent
 	local constraint = Instance.new("UITextSizeConstraint")
-	constraint.MaxTextSize = 38
-	constraint.MinTextSize = 18
+	constraint.MaxTextSize = 72
+	constraint.MinTextSize = 60
 	constraint.Parent = label
 	return label
 end
@@ -59632,36 +60044,36 @@ local function renderEntries(boardState, entries)
 		card.BackgroundTransparency = if position <= 3 then 0.08 else 0.18
 		card.BorderSizePixel = 0
 		card.LayoutOrder = position
-		card.Size = UDim2.new(1, -4, 0, 92)
+		card.Size = UDim2.new(1, -4, 0, 120)
 		card.Parent = scroll
 		addCorner(card, 18)
 
-		local stroke = Instance.new("UIStroke")
-		stroke.Color = if position <= 3
-			then Color3.fromRGB(255, 225, 119)
-			else Color3.fromRGB(255, 255, 255)
-		stroke.Thickness = if position <= 3 then 2 else 1
-		stroke.Transparency = if position <= 3 then 0.25 else 0.82
-		stroke.Parent = card
+		-- local stroke = Instance.new("UIStroke")
+		-- stroke.Color = if position <= 3
+		-- 	then Color3.fromRGB(255, 225, 119)
+		-- 	else Color3.fromRGB(255, 255, 255)
+		-- stroke.Thickness = if position <= 3 then 2 else 1
+		-- stroke.Transparency = if position <= 3 then 0.25 else 0.82
+		-- stroke.Parent = card
 
 		makeLabel(
 			card,
 			`#{position}`,
-			UDim2.fromOffset(18, 12),
+			UDim2.fromOffset(18, 16),
 			UDim2.fromOffset(105, 68),
 			Enum.TextXAlignment.Center
 		)
 		makeLabel(
 			card,
-			`@{entry.username}`,
-			UDim2.fromOffset(142, 12),
+			entry.username,
+			UDim2.fromOffset(142, 16),
 			UDim2.new(1, -410, 0, 68),
 			Enum.TextXAlignment.Left
 		)
 		local value = makeLabel(
 			card,
 			LeaderboardFormat.formatValue(boardState.dataKey, entry.value),
-			UDim2.new(1, -260, 0, 12),
+			UDim2.new(1, -260, 0, 16),
 			UDim2.fromOffset(238, 68),
 			Enum.TextXAlignment.Right
 		)
@@ -59676,6 +60088,27 @@ local function clearAvatar(board, index)
 	if avatar then
 		avatar:Destroy()
 	end
+end
+
+local function playAvatarAnimation(humanoid)
+	local animator = humanoid:FindFirstChildOfClass("Animator")
+	if not animator then
+		animator = Instance.new("Animator")
+		animator.Parent = humanoid
+	end
+	local animation = Instance.new("Animation")
+	animation.AnimationId = GameConfig.leaderboard.avatarAnimationId
+	local success, track = pcall(function()
+		return animator:LoadAnimation(animation)
+	end)
+	animation:Destroy()
+	if not success or not track then
+		warn(`[BalapKarung] Animasi avatar leaderboard gagal dimuat: {tostring(track)}`)
+		return
+	end
+	track.Priority = Enum.AnimationPriority.Action
+	track.Looped = true
+	track:Play(0.2)
 end
 
 local function placeAvatar(board, spot, index, userId)
@@ -59693,14 +60126,16 @@ local function placeAvatar(board, spot, index, userId)
 	end
 	avatar.Name = `{AVATAR_MODEL_PREFIX}{index}`
 	avatar:SetAttribute("UserId", userId)
+	local root = avatar:FindFirstChild("HumanoidRootPart")
 	for _, descendant in avatar:GetDescendants() do
 		if descendant:IsA("BaseScript") then
 			descendant:Destroy()
 		elseif descendant:IsA("BasePart") then
-			descendant.Anchored = true
+			descendant.Anchored = descendant == root
 			descendant.CanCollide = false
 			descendant.CanQuery = false
 			descendant.CanTouch = false
+			descendant.Massless = descendant ~= root
 		end
 	end
 	local humanoid = avatar:FindFirstChildOfClass("Humanoid")
@@ -59708,12 +60143,32 @@ local function placeAvatar(board, spot, index, userId)
 		humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
 	end
 	avatar.Parent = board
-	local facing = CFrame.lookAt(spot.Position, spot.Position + spot.CFrame.LookVector)
+	if humanoid then
+		playAvatarAnimation(humanoid)
+	end
+	local view = getTaggedDescendant(board, GameConfig.leaderboard.viewTag)
+	local face = if view and view:IsA("BasePart") then getSurfaceFace(board, view) else nil
+	local outward = if face == Enum.NormalId.Left
+		then -view.CFrame.RightVector
+		elseif face == Enum.NormalId.Right then view.CFrame.RightVector
+		else spot.CFrame.LookVector
+	local facing = CFrame.lookAt(spot.Position, spot.Position + outward)
 	avatar:PivotTo(facing)
-	local boundingCFrame, boundingSize = avatar:GetBoundingBox()
-	local bottomY = boundingCFrame.Position.Y - boundingSize.Y / 2
+	RunService.Heartbeat:Wait()
+	avatar:PivotTo(facing)
+	local bottomY = math.huge
+	for _, child in avatar:GetChildren() do
+		if child:IsA("BasePart") and child ~= root then
+			bottomY = math.min(bottomY, child.Position.Y - child.Size.Y / 2)
+		end
+	end
+	if bottomY == math.huge and root then
+		bottomY = root.Position.Y - root.Size.Y / 2
+	end
 	local targetBottomY = spot.Position.Y + spot.Size.Y / 2
-	avatar:PivotTo(avatar:GetPivot() + Vector3.new(0, targetBottomY - bottomY, 0))
+	if bottomY < math.huge then
+		avatar:PivotTo(avatar:GetPivot() + Vector3.new(0, targetBottomY - bottomY, 0))
+	end
 end
 
 local function renderAvatars(boardState, entries)
@@ -59779,7 +60234,7 @@ function LeaderboardService:_getPlayerValue(player, field, source)
 end
 
 function LeaderboardService:_syncPlayer(player, force)
-	if not self._persistenceEnabled then
+	if not self._persistenceEnabled or isExcludedUserId(player.UserId) then
 		return
 	end
 	local syncedStores = {}
@@ -59792,7 +60247,14 @@ function LeaderboardService:_syncPlayer(player, force)
 				value = math.max(0, math.floor(value))
 				if force or self._lastWritten[player][boardState.storeKey] ~= value then
 					local success, message = pcall(function()
-						self:_getStore(boardState.storeKey):SetAsync(tostring(player.UserId), value)
+						local store = self:_getStore(boardState.storeKey)
+						if boardState.field == "BestWinStreak" then
+							store:UpdateAsync(tostring(player.UserId), function(previousValue)
+								return math.max(tonumber(previousValue) or 0, value)
+							end)
+						else
+							store:SetAsync(tostring(player.UserId), value)
+						end
 					end)
 					if success then
 						self._lastWritten[player][boardState.storeKey] = value
@@ -59823,8 +60285,13 @@ function LeaderboardService:_readPersistent(boardState)
 	local entries = {}
 	for _, entry in pages:GetCurrentPage() do
 		local userId = tonumber(entry.key)
-		if userId and type(entry.value) == "number" then
-			entries[userId] = math.max(0, math.floor(entry.value))
+		if
+			userId
+			and not isExcludedUserId(userId)
+			and type(entry.value) == "number"
+			and entry.value >= GameConfig.leaderboard.minimumValue
+		then
+			entries[userId] = math.floor(entry.value)
 		end
 	end
 	return entries
@@ -59857,19 +60324,29 @@ end
 function LeaderboardService:_getEntries(boardState)
 	local values = self:_readPersistent(boardState)
 	for _, player in Players:GetPlayers() do
+		if isExcludedUserId(player.UserId) then
+			values[player.UserId] = nil
+			continue
+		end
 		local value = self:_getPlayerValue(player, boardState.field, boardState.source)
-		if value then
-			values[player.UserId] = math.max(0, math.floor(value))
+		local mergedValue =
+			LeaderboardFormat.mergePlayerValue(boardState.field, values[player.UserId], value)
+		if mergedValue and mergedValue >= GameConfig.leaderboard.minimumValue then
+			values[player.UserId] = mergedValue
+		else
+			values[player.UserId] = nil
 		end
 	end
 	self:_resolveNames(values)
 	local entries = {}
 	for userId, value in values do
-		table.insert(entries, {
-			userId = userId,
-			username = self._nameCache[userId] or `User{userId}`,
-			value = value,
-		})
+		if not isExcludedUserId(userId) then
+			table.insert(entries, {
+				userId = userId,
+				username = self._nameCache[userId] or `User{userId}`,
+				value = value,
+			})
+		end
 	end
 	table.sort(entries, function(left, right)
 		if left.value ~= right.value then
@@ -59887,6 +60364,14 @@ function LeaderboardService:_refreshBoard(boardState)
 	if not boardState.model.Parent or not boardState.view.Parent then
 		return
 	end
+	local now = os.clock()
+	if
+		boardState.lastFetchAt
+		and now - boardState.lastFetchAt < GameConfig.leaderboard.minimumRefreshGapSeconds
+	then
+		return
+	end
+	boardState.lastFetchAt = now
 	local dataKey, field, version, itemCount, source, storeKey =
 		self:_getBoardDefinition(boardState.model)
 	boardState.dataKey = dataKey
@@ -59935,7 +60420,7 @@ function LeaderboardService:_addBoard(model)
 		scroll = scroll,
 	}
 	self._boards[model] = boardState
-	task.spawn(function()
+	task.delay(GameConfig.leaderboard.initialRefreshDelaySeconds, function()
 		self:_refreshBoard(boardState)
 	end)
 end
@@ -59955,9 +60440,6 @@ function LeaderboardService:Start()
 	local function watchPlayer(player)
 		local function onDataLoaded()
 			if player:GetAttribute("DataLoaded") == true then
-				task.spawn(function()
-					self:_syncPlayer(player, false)
-				end)
 				task.delay(0.1, function()
 					self:_refreshAllBoards()
 				end)
@@ -59984,7 +60466,7 @@ function LeaderboardService:Start()
 		end
 	end)
 	task.spawn(function()
-		task.wait(5)
+		task.wait(GameConfig.leaderboard.initialWriteDelaySeconds)
 		while true do
 			for _, player in Players:GetPlayers() do
 				task.spawn(function()
@@ -60000,7 +60482,7 @@ return LeaderboardService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="345">
+      <Item class="ModuleScript" referent="351">
         <Properties>
           <string name="Name">OverheadService</string>
           <string name="Source"><![CDATA[local Players = game:GetService("Players")
@@ -60082,7 +60564,7 @@ return OverheadService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="346">
+      <Item class="ModuleScript" referent="352">
         <Properties>
           <string name="Name">RaceService</string>
           <string name="Source"><![CDATA[local CollectionService = game:GetService("CollectionService")
@@ -60094,6 +60576,9 @@ local StarterPlayer = game:GetService("StarterPlayer")
 local Workspace = game:GetService("Workspace")
 
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
+local LavaWaveMechanic = require(ReplicatedStorage.Shared.LavaWaveMechanic)
+local MovementPrediction = require(ReplicatedStorage.Shared.MovementPrediction)
+local NetworkTiming = require(ReplicatedStorage.Shared.NetworkTiming)
 local ObstacleMechanic = require(ReplicatedStorage.Shared.ObstacleMechanic)
 local Reaction = require(ReplicatedStorage.Shared.Reaction)
 local Speed = require(ReplicatedStorage.Shared.Speed)
@@ -60106,16 +60591,6 @@ local ON_FIRE_AURA_ATTRIBUTE = "BalapKarungOnfireAura"
 
 local RaceService = {}
 RaceService.__index = RaceService
-
-local function isCharacterInsideFinish(character, finish)
-	local overlapParams = OverlapParams.new()
-	overlapParams.FilterType = Enum.RaycastFilterType.Include
-	overlapParams.FilterDescendantsInstances = { character }
-	overlapParams.MaxParts = 1
-
-	local forgivingSize = finish.Size + Vector3.new(1, 6, 1)
-	return #Workspace:GetPartBoundsInBox(finish.CFrame, forgivingSize, overlapParams) > 0
-end
 
 local function setPlayerDefaults(player)
 	player:SetAttribute("Speed", GameConfig.speed.normalValue)
@@ -60145,8 +60620,28 @@ local function setPlayerDefaults(player)
 	player:SetAttribute("BreakerActive", false)
 	player:SetAttribute("BreakerChain", 0)
 	player:SetAttribute("LastBreakerVerdict", "")
+	player:SetAttribute("LastLavaVerdict", "")
+	player:SetAttribute("LavaWavesDodged", 0)
+	player:SetAttribute("LavaWavesHit", 0)
 	player:SetAttribute("RaceValidInputs", 0)
 	player:SetAttribute("LastCoinReward", 0)
+	player:SetAttribute("NetworkPingMs", 0)
+	player:SetAttribute("LastPromptSentAt", 0)
+	player:SetAttribute("LastPromptOpensAt", 0)
+	player:SetAttribute("LastPromptId", 0)
+	player:SetAttribute("LastPromptType", "")
+	player:SetAttribute("LastReactionReceivedAt", 0)
+	player:SetAttribute("LastReactionPressedAt", 0)
+	player:SetAttribute("LastReactionEventId", 0)
+	player:SetAttribute("LastImpactReceivedAt", 0)
+	player:SetAttribute("LastImpactDetectedAt", 0)
+	player:SetAttribute("LastImpactValidationDistance", 0)
+	player:SetAttribute("RaceId", 0)
+	player:SetAttribute("RaceForward", Vector3.zero)
+	player:SetAttribute("RaceStartOrigin", Vector3.zero)
+	player:SetAttribute("TrackLength", 0)
+	player:SetAttribute("AuthoritativeDistance", 0)
+	player:SetAttribute("AuthoritativeUpdatedAt", 0)
 end
 
 local function isPointInsidePart(part, point)
@@ -60506,6 +61001,9 @@ local function restoreLobbyCharacter(player, character)
 		root.Anchored = false
 		root.AssemblyLinearVelocity = Vector3.zero
 		root.AssemblyAngularVelocity = Vector3.zero
+		pcall(function()
+			root:SetNetworkOwnershipAuto()
+		end)
 	end
 end
 
@@ -60616,6 +61114,12 @@ function RaceService.new(dataService)
 	self._state = "Waiting"
 	self._trackService = TrackService.new()
 	self._activeTrack = nil
+	self._lavaEnabled = false
+	self._lavaGeometry = nil
+	self._lavaWaves = {}
+	self._lavaWaveId = 0
+	self._nextLavaWaveAt = 0
+	self._lavaRandom = Random.new()
 	self:_createRemotes()
 	return self
 end
@@ -60683,7 +61187,6 @@ function RaceService:_createRemotes()
 		breakerImpact.Name = "BreakerImpact"
 		breakerImpact.Parent = folder
 	end
-
 	self._reactionWindowRemote = reactionWindow
 	self._submitReactionRemote = submitReaction
 	self._submitGuardImpactRemote = submitGuardImpact
@@ -60699,6 +61202,76 @@ function RaceService:_setState(state, countdown)
 	self._state = state
 	Workspace:SetAttribute("RaceState", state)
 	Workspace:SetAttribute("Countdown", countdown or 0)
+end
+
+function RaceService:_refreshNetworkTiming(racer, now, force)
+	if not force and now - racer.lastPingSampleAt < GameConfig.networking.pingIntervalSeconds then
+		return
+	end
+	racer.lastPingSampleAt = now
+	local success, sample = pcall(function()
+		return racer.player:GetNetworkPing()
+	end)
+	if
+		not success
+		or type(sample) ~= "number"
+		or sample ~= sample
+		or sample < 0
+		or sample == math.huge
+	then
+		return
+	end
+	racer.smoothOneWayLatency = NetworkTiming.smoothLatency(
+		racer.smoothOneWayLatency,
+		sample,
+		GameConfig.networking.pingSmoothingAlpha,
+		GameConfig.networking.maximumOneWayLatencySeconds
+	)
+	racer.player:SetAttribute("NetworkPingMs", math.round(racer.smoothOneWayLatency * 1000))
+end
+
+function RaceService:_playerLeadSeconds(racer, baseLeadSeconds)
+	return NetworkTiming.leadSeconds(
+		racer.smoothOneWayLatency,
+		baseLeadSeconds,
+		GameConfig.networking
+	)
+end
+
+function RaceService:_playerGraceSeconds(racer)
+	return NetworkTiming.graceSeconds(racer.smoothOneWayLatency, GameConfig.networking)
+end
+
+function RaceService:_validationDistance(racer, baseDistance, maximumDistance)
+	local latency = math.min(
+		racer.smoothOneWayLatency or GameConfig.networking.initialOneWayLatencySeconds,
+		GameConfig.networking.maximumOneWayLatencySeconds
+	)
+	return NetworkTiming.validationDistance(
+		latency,
+		racer.speed * racer.speedMultiplier,
+		baseDistance,
+		maximumDistance
+	)
+end
+
+function RaceService:_stampPrompt(racer, event, promptType, sentAt)
+	event.promptType = promptType
+	event.sentAt = sentAt
+	event.graceSeconds = self:_playerGraceSeconds(racer)
+	event.resolveAt = NetworkTiming.resolveAt(event.closesAt, event.graceSeconds)
+	racer.player:SetAttribute("LastPromptSentAt", sentAt)
+	racer.player:SetAttribute("LastPromptOpensAt", event.opensAt)
+	racer.player:SetAttribute("LastPromptId", event.id)
+	racer.player:SetAttribute("LastPromptType", promptType)
+end
+
+function RaceService:_isClientTimestampPlausible(racer, serverNow, clientTimestamp)
+	return NetworkTiming.isTimestampPlausible(
+		serverNow,
+		clientTimestamp,
+		GameConfig.reactionWindow.maximumClockDifferenceSeconds + self:_playerGraceSeconds(racer)
+	)
 end
 
 function RaceService:_configureCharacter(player, character)
@@ -60720,7 +61293,7 @@ function RaceService:_configureCharacter(player, character)
 	end
 
 	pcall(function()
-		root:SetNetworkOwner(nil)
+		root:SetNetworkOwner(player)
 	end)
 
 	return humanoid, root
@@ -60752,6 +61325,23 @@ function RaceService:_prepareRace(eligiblePlayers)
 	self._raceId += 1
 	self._finishCount = 0
 	table.clear(self._racers)
+	self:_clearLavaWaves()
+	self._lavaEnabled = activeTrack.id == GameConfig.lavaWave.trackId
+		or activeTrack.model:GetAttribute("LavaWavesEnabled") == true
+	self._lavaGeometry = nil
+	if self._lavaEnabled then
+		self._lavaGeometry = LavaWaveMechanic.geometryForLanes(
+			activeTrack.lanes,
+			activeTrack.finish,
+			GameConfig.lavaWave.lateralPaddingStuds,
+			GameConfig.lavaWave.cleanupPaddingStuds
+		)
+		if not self._lavaGeometry then
+			warn("[BalapKarung] Geometri Lava wave tidak dapat dihitung")
+			self._lavaEnabled = false
+		end
+	end
+	Workspace:SetAttribute("LavaWaveActive", self._lavaEnabled)
 
 	local currentPlayers = {}
 	for _, player in eligiblePlayers do
@@ -60813,6 +61403,12 @@ function RaceService:_prepareRace(eligiblePlayers)
 		player:SetAttribute("RaceProgress", 0)
 		player:SetAttribute("RaceStatus", "Countdown")
 		player:SetAttribute("LaneIndex", lane.index)
+		player:SetAttribute("RaceId", self._raceId)
+		player:SetAttribute("RaceForward", lane.forward)
+		player:SetAttribute("RaceStartOrigin", spawn.Position)
+		player:SetAttribute("TrackLength", lane.length)
+		player:SetAttribute("AuthoritativeDistance", 0)
+		player:SetAttribute("AuthoritativeUpdatedAt", 0)
 
 		self._racers[player] = {
 			player = player,
@@ -60830,6 +61426,10 @@ function RaceService:_prepareRace(eligiblePlayers)
 			speedMultiplier = 1,
 			boostEndsAt = 0,
 			lastReplicationAt = 0,
+			authoritativeDistance = 0,
+			lastTickAt = 0,
+			lastPingSampleAt = -math.huge,
+			smoothOneWayLatency = GameConfig.networking.initialOneWayLatencySeconds,
 			finished = false,
 			recoveringUntil = 0,
 			nextNormalPromptAt = 0,
@@ -60842,12 +61442,307 @@ function RaceService:_prepareRace(eligiblePlayers)
 			activeBreakerZone = nil,
 			breakerReactions = {},
 			pausedOnFireRemaining = 0,
+			lavaReaction = nil,
+			lavaThreat = nil,
 			validInputCount = 0,
 			raceId = self._raceId,
 		}
 	end
 
 	return next(self._racers) ~= nil
+end
+
+function RaceService:_clearLavaWaves()
+	for _, wave in self._lavaWaves do
+		if wave.instance and wave.instance.Parent then
+			wave.instance:Destroy()
+		end
+	end
+	table.clear(self._lavaWaves)
+	self._nextLavaWaveAt = 0
+	Workspace:SetAttribute("LavaWaveActive", false)
+end
+
+function RaceService:_setLavaWaveCFrame(wave, distance)
+	local geometry = self._lavaGeometry
+	if not geometry or not wave.instance or not wave.instance.Parent then
+		return
+	end
+	local position = geometry.origin
+		+ geometry.direction * distance
+		+ Vector3.yAxis * GameConfig.lavaWave.visualYOffsetStuds
+	local cframe = CFrame.lookAt(position, position + geometry.direction)
+	if wave.instance:IsA("Model") then
+		wave.instance:PivotTo(cframe)
+	elseif wave.instance:IsA("BasePart") then
+		wave.instance.CFrame = cframe
+	end
+end
+
+function RaceService:_createLavaWaveVisual(waveId, variant)
+	local activeTrack = self._activeTrack
+	if not activeTrack or not activeTrack.model.Parent then
+		return nil
+	end
+
+	local folder = activeTrack.model:FindFirstChild(GameConfig.lavaWave.runtimeFolderName)
+	if not folder then
+		folder = Instance.new("Folder")
+		folder.Name = GameConfig.lavaWave.runtimeFolderName
+		folder.Parent = activeTrack.model
+	end
+
+	local template = ReplicatedStorage:FindFirstChild(GameConfig.lavaWave.templateName)
+	local visual = nil
+	if template and (template:IsA("BasePart") or template:IsA("Model")) then
+		visual = template:Clone()
+	else
+		local part = Instance.new("Part")
+		part.Size = Vector3.new(
+			self._lavaGeometry.width,
+			GameConfig.lavaWave.visualHeightStuds,
+			GameConfig.lavaWave.visualDepthStuds
+		)
+		part.Material = Enum.Material.Neon
+		part.Color = variant.color
+		part.Transparency = 0.12
+		visual = part
+	end
+
+	visual.Name = `LavaWave{waveId}`
+	for _, descendant in visual:GetDescendants() do
+		if descendant:IsA("BasePart") then
+			descendant.Anchored = true
+			descendant.CanCollide = false
+			descendant.CanTouch = false
+			descendant.CanQuery = false
+			descendant.Color = variant.color
+		end
+	end
+	if visual:IsA("BasePart") then
+		visual.Anchored = true
+		visual.CanCollide = false
+		visual.CanTouch = false
+		visual.CanQuery = false
+		visual.Color = variant.color
+	end
+	visual:SetAttribute("BalapKarungLavaWave", true)
+	visual:SetAttribute("WaveVariant", variant.id)
+	visual.Parent = folder
+	return visual
+end
+
+function RaceService:_spawnSingleLavaWave(now, variant, initialDistance)
+	self._lavaWaveId += 1
+	local speed = GameConfig.lavaWave.speedStudsPerSecond * variant.speedMultiplier
+	local wave = {
+		id = self._lavaWaveId,
+		spawnedAt = now,
+		instance = self:_createLavaWaveVisual(self._lavaWaveId, variant),
+		racers = {},
+		variantId = variant.id,
+		speed = speed,
+		initialDistance = initialDistance,
+		reactionDuration = GameConfig.lavaWave.reactionDurationSeconds
+			* variant.reactionDurationMultiplier,
+		promptLeadSeconds = GameConfig.lavaWave.promptLeadSeconds
+			* variant.reactionDurationMultiplier,
+	}
+	if not wave.instance then
+		return
+	end
+	wave.instance:SetAttribute("WaveSpeed", speed)
+	self:_setLavaWaveCFrame(wave, initialDistance)
+	table.insert(self._lavaWaves, wave)
+end
+
+function RaceService:_spawnLavaWave(now)
+	local variant =
+		LavaWaveMechanic.variantForRoll(GameConfig.lavaWave.variants, self._lavaRandom:NextNumber())
+	local speed = GameConfig.lavaWave.speedStudsPerSecond * variant.speedMultiplier
+	for waveIndex = 1, variant.waveCount do
+		local gapSeconds = variant.waveGapSeconds or 0
+		local initialDistance = -(waveIndex - 1) * speed * gapSeconds
+		self:_spawnSingleLavaWave(now, variant, initialDistance)
+	end
+	self._nextLavaWaveAt = now
+		+ self._lavaRandom:NextNumber(
+			GameConfig.lavaWave.minimumIntervalSeconds,
+			GameConfig.lavaWave.maximumIntervalSeconds
+		)
+end
+
+function RaceService:_startLavaPrompt(racer, wave, waveState, now)
+	local normalEvent = racer.reaction
+	if normalEvent and not normalEvent.resolved then
+		normalEvent.lavaFused = true
+		normalEvent.waveState = waveState
+		normalEvent.waveId = wave.id
+		waveState.prompted = true
+		waveState.event = normalEvent
+		racer.lavaReaction = normalEvent
+		racer.lavaThreat = waveState
+		self._reactionWindowRemote:FireClient(racer.player, {
+			action = "morph",
+			id = normalEvent.id,
+			skillId = GameConfig.lavaWave.skillId,
+			obstacle = true,
+			waveVariant = wave.variantId,
+		})
+		return
+	end
+
+	self._eventId += 1
+	local networkLead = self:_playerLeadSeconds(racer, 0)
+	local event = {
+		id = self._eventId,
+		opensAt = now + networkLead,
+		closesAt = now + networkLead + wave.reactionDuration,
+		duration = wave.reactionDuration,
+		resolved = false,
+		waveState = waveState,
+		waveId = wave.id,
+	}
+	self:_stampPrompt(racer, event, "Lava", now)
+	waveState.prompted = true
+	waveState.event = event
+	racer.lavaReaction = event
+	racer.lavaThreat = waveState
+
+	local random = Random.new(racer.player.UserId + wave.id * 3571)
+	self._reactionWindowRemote:FireClient(racer.player, {
+		action = "show",
+		id = event.id,
+		opensAt = event.opensAt,
+		duration = event.duration,
+		chainIndex = 1,
+		chainLength = 1,
+		skillId = GameConfig.lavaWave.skillId,
+		obstacle = true,
+		waveVariant = wave.variantId,
+		screenX = random:NextNumber(
+			GameConfig.reactionWindow.minimumScreenX,
+			GameConfig.reactionWindow.maximumScreenX
+		),
+		screenY = random:NextNumber(
+			GameConfig.reactionWindow.minimumScreenY,
+			GameConfig.reactionWindow.maximumScreenY
+		),
+	})
+end
+
+function RaceService:_resolveLavaImpact(racer, waveState)
+	if waveState.impacted then
+		return
+	end
+	waveState.impacted = true
+	if racer.lavaThreat == waveState then
+		racer.lavaThreat = nil
+	end
+	local event = waveState.event
+	if event and not event.resolved then
+		event.resolved = true
+		if racer.lavaReaction == event then
+			racer.lavaReaction = nil
+		end
+		if racer.reaction == event then
+			racer.reaction = nil
+		end
+		self._reactionWindowRemote:FireClient(racer.player, {
+			action = "remove",
+			id = event.id,
+		})
+	end
+	if waveState.success then
+		racer.player:SetAttribute(
+			"LavaWavesDodged",
+			(racer.player:GetAttribute("LavaWavesDodged") or 0) + 1
+		)
+	else
+		racer.player:SetAttribute(
+			"LavaWavesHit",
+			(racer.player:GetAttribute("LavaWavesHit") or 0) + 1
+		)
+		if not waveState.failureResolved then
+			racer.player:SetAttribute("LastLavaVerdict", "Miss")
+			self:_resolveReaction(racer, "Miss", nil)
+		end
+	end
+end
+
+function RaceService:_updateLavaWaves(now)
+	if not self._lavaEnabled or not self._lavaGeometry then
+		return
+	end
+	if self._nextLavaWaveAt > 0 and now >= self._nextLavaWaveAt then
+		self:_spawnLavaWave(now)
+	end
+
+	for index = #self._lavaWaves, 1, -1 do
+		local wave = self._lavaWaves[index]
+		local waveDistance = wave.initialDistance + (now - wave.spawnedAt) * wave.speed
+		self:_setLavaWaveCFrame(wave, waveDistance)
+
+		for _, racer in self._racers do
+			if racer.finished then
+				continue
+			end
+			local waveState = wave.racers[racer.player]
+			if not waveState then
+				waveState = {
+					prompted = false,
+					success = false,
+					impacted = false,
+					event = nil,
+				}
+				wave.racers[racer.player] = waveState
+			end
+
+			local racerPosition = racer.startOrigin
+				+ racer.forward * (racer.authoritativeDistance or 0)
+			local racerDistance = (racerPosition - self._lavaGeometry.origin):Dot(
+				self._lavaGeometry.direction
+			)
+			if
+				not waveState.prompted
+				and not waveState.impacted
+				and racerDistance > waveDistance
+			then
+				local timeToImpact = LavaWaveMechanic.timeToImpact(
+					waveDistance,
+					racerDistance,
+					wave.speed,
+					racer.speed * racer.speedMultiplier
+				)
+				local networkBuffer = self:_playerLeadSeconds(racer, 0)
+					+ self:_playerGraceSeconds(racer)
+				if timeToImpact <= wave.promptLeadSeconds + networkBuffer then
+					self:_startLavaPrompt(racer, wave, waveState, now)
+				end
+			end
+
+			local event = waveState.event
+			if event and not event.resolved and now >= (event.resolveAt or event.closesAt) then
+				event.resolved = true
+				if racer.lavaReaction == event then
+					racer.lavaReaction = nil
+				end
+			end
+			if
+				not waveState.impacted
+				and waveDistance >= racerDistance - GameConfig.lavaWave.impactToleranceStuds
+			then
+				self:_resolveLavaImpact(racer, waveState)
+			end
+		end
+
+		if waveDistance >= self._lavaGeometry.travelDistance then
+			if wave.instance and wave.instance.Parent then
+				wave.instance:Destroy()
+			end
+			table.remove(self._lavaWaves, index)
+		end
+	end
 end
 
 function RaceService:_returnPlayersToLobby()
@@ -61044,6 +61939,7 @@ function RaceService:_triggerObstacleCrash(racer, obstacle, initiatorUserId)
 			barrier = barrier,
 			obstacleId = obstacle.id,
 			initiatorUserId = initiatorUserId or 0,
+			soundUserId = racer.player.UserId,
 			throwDirection = obstacle.throwDirection,
 			forward = racer.forward,
 		})
@@ -61071,22 +61967,28 @@ function RaceService:_submitObstacleCrash(player, barrier, clientDetectedAt)
 	then
 		return
 	end
-	if
-		math.abs(Workspace:GetServerTimeNow() - clientDetectedAt)
-		> GameConfig.reactionWindow.maximumClockDifferenceSeconds
-	then
+	local serverNow = Workspace:GetServerTimeNow()
+	if not self:_isClientTimestampPlausible(racer, serverNow, clientDetectedAt) then
 		return
 	end
+	racer.player:SetAttribute("LastImpactReceivedAt", serverNow)
+	racer.player:SetAttribute("LastImpactDetectedAt", clientDetectedAt)
 
 	local obstacle = racer.activeObstacle
 	if not obstacle or not obstacle.failed or obstacle.crashed or obstacle.barrier ~= barrier then
 		return
 	end
 
-	local progress = (racer.root.Position - racer.startOrigin):Dot(racer.forward)
+	local progress = racer.authoritativeDistance or 0
 	local distanceToBarrier = obstacle.barrierProgress - progress
+	local validationDistance = self:_validationDistance(
+		racer,
+		GameConfig.obstacle.guardBaseValidationDistanceStuds,
+		GameConfig.obstacle.guardMaxValidationDistanceStuds
+	)
+	racer.player:SetAttribute("LastImpactValidationDistance", validationDistance)
 	if
-		distanceToBarrier > GameConfig.obstacle.guardServerValidationDistanceStuds
+		distanceToBarrier > validationDistance
 		or distanceToBarrier < -GameConfig.obstacle.guardServerFallbackStuds
 	then
 		return
@@ -61137,7 +62039,8 @@ function RaceService:_startObstacleSequence(racer, obstacle)
 		resolvedCount = 0,
 	}
 	racer.obstacleSequence = sequence
-	local startsAt = Workspace:GetServerTimeNow()
+	local sentAt = Workspace:GetServerTimeNow()
+	local startsAt = sentAt + self:_playerLeadSeconds(racer, 0)
 	local random = Random.new(racer.player.UserId + self._raceId * 1009 + self._eventId)
 	local positions = ObstacleMechanic.generatePromptPositions(random, obstacle.tapCount, {
 		minimumX = GameConfig.reactionWindow.minimumScreenX,
@@ -61158,6 +62061,7 @@ function RaceService:_startObstacleSequence(racer, obstacle)
 			sequence = sequence,
 			sequenceIndex = sequenceIndex,
 		}
+		self:_stampPrompt(racer, event, "Obstacle", sentAt)
 		racer.obstacleReactions[event.id] = event
 		local position = positions[sequenceIndex]
 		self._reactionWindowRemote:FireClient(racer.player, {
@@ -61178,7 +62082,7 @@ function RaceService:_startObstacleSequence(racer, obstacle)
 				self._state == "Racing"
 				and not racer.finished
 				and not event.resolved
-				and Workspace:GetServerTimeNow() <= event.closesAt
+				and Workspace:GetServerTimeNow() <= event.resolveAt
 			do
 				task.wait()
 			end
@@ -61207,6 +62111,7 @@ function RaceService:_triggerGuardImpact(racer, obstacle, initiatorUserId)
 			barrier = barrier,
 			obstacleId = obstacle.id,
 			initiatorUserId = initiatorUserId,
+			soundUserId = racer.player.UserId,
 			throwDirection = obstacle.throwDirection,
 			forward = racer.forward,
 		})
@@ -61231,12 +62136,12 @@ function RaceService:_submitGuardImpact(player, barrier, clientDetectedAt)
 	then
 		return
 	end
-	if
-		math.abs(Workspace:GetServerTimeNow() - clientDetectedAt)
-		> GameConfig.reactionWindow.maximumClockDifferenceSeconds
-	then
+	local serverNow = Workspace:GetServerTimeNow()
+	if not self:_isClientTimestampPlausible(racer, serverNow, clientDetectedAt) then
 		return
 	end
+	racer.player:SetAttribute("LastImpactReceivedAt", serverNow)
+	racer.player:SetAttribute("LastImpactDetectedAt", clientDetectedAt)
 
 	local obstacle = racer.activeObstacle
 	if
@@ -61248,10 +62153,16 @@ function RaceService:_submitGuardImpact(player, barrier, clientDetectedAt)
 		return
 	end
 
-	local progress = (racer.root.Position - racer.startOrigin):Dot(racer.forward)
+	local progress = racer.authoritativeDistance or 0
 	local distanceToBarrier = obstacle.barrierProgress - progress
+	local validationDistance = self:_validationDistance(
+		racer,
+		GameConfig.obstacle.guardBaseValidationDistanceStuds,
+		GameConfig.obstacle.guardMaxValidationDistanceStuds
+	)
+	racer.player:SetAttribute("LastImpactValidationDistance", validationDistance)
 	if
-		distanceToBarrier > GameConfig.obstacle.guardServerValidationDistanceStuds
+		distanceToBarrier > validationDistance
 		or distanceToBarrier < -GameConfig.obstacle.guardServerFallbackStuds
 	then
 		return
@@ -61360,6 +62271,7 @@ function RaceService:_startBreakerPrompt(racer, zone, obstacle)
 	obstacle.promptStarted = true
 	self._eventId += 1
 	local now = Workspace:GetServerTimeNow()
+	local networkLead = self:_playerLeadSeconds(racer, 0)
 	local random =
 		Random.new(racer.player.UserId + self._raceId * 2027 + math.floor(obstacle.progress * 10))
 	local positions = ObstacleMechanic.generatePromptPositions(random, 1, {
@@ -61370,13 +62282,14 @@ function RaceService:_startBreakerPrompt(racer, zone, obstacle)
 	}, GameConfig.breaker.promptMinimumDistance, GameConfig.breaker.promptPositionAttempts)
 	local event = {
 		id = self._eventId,
-		opensAt = now,
-		closesAt = now + GameConfig.breaker.reactionDurationSeconds,
+		opensAt = now + networkLead,
+		closesAt = now + networkLead + GameConfig.breaker.reactionDurationSeconds,
 		duration = GameConfig.breaker.reactionDurationSeconds,
 		resolved = false,
 		zone = zone,
 		obstacle = obstacle,
 	}
+	self:_stampPrompt(racer, event, "Breaker", now)
 	obstacle.event = event
 	racer.breakerReactions[event.id] = event
 	local position = positions[1]
@@ -61400,7 +62313,7 @@ function RaceService:_startBreakerPrompt(racer, zone, obstacle)
 			and not racer.finished
 			and racer.activeBreakerZone == zone
 			and not event.resolved
-			and Workspace:GetServerTimeNow() <= event.closesAt
+			and Workspace:GetServerTimeNow() <= event.resolveAt
 		do
 			task.wait()
 		end
@@ -61425,6 +62338,7 @@ function RaceService:_triggerBreakerImpact(racer, obstacle, initiatorUserId)
 		impactPart = obstacle.impactPart,
 		obstacleId = obstacle.id,
 		initiatorUserId = initiatorUserId or 0,
+		soundUserId = racer.player.UserId,
 		success = success,
 		throwDirection = obstacle.throwDirection,
 		forward = racer.forward,
@@ -61448,12 +62362,12 @@ function RaceService:_submitBreakerImpact(player, impactPart, clientDetectedAt)
 	then
 		return
 	end
-	if
-		math.abs(Workspace:GetServerTimeNow() - clientDetectedAt)
-		> GameConfig.reactionWindow.maximumClockDifferenceSeconds
-	then
+	local serverNow = Workspace:GetServerTimeNow()
+	if not self:_isClientTimestampPlausible(racer, serverNow, clientDetectedAt) then
 		return
 	end
+	racer.player:SetAttribute("LastImpactReceivedAt", serverNow)
+	racer.player:SetAttribute("LastImpactDetectedAt", clientDetectedAt)
 
 	local obstacle = nil
 	for _, candidate in racer.activeBreakerZone.obstacles do
@@ -61466,10 +62380,16 @@ function RaceService:_submitBreakerImpact(player, impactPart, clientDetectedAt)
 		return
 	end
 
-	local progress = (racer.root.Position - racer.startOrigin):Dot(racer.forward)
+	local progress = racer.authoritativeDistance or 0
 	local distanceToImpact = obstacle.progress - progress
+	local validationDistance = self:_validationDistance(
+		racer,
+		GameConfig.breaker.baseValidationDistanceStuds,
+		GameConfig.breaker.maxValidationDistanceStuds
+	)
+	racer.player:SetAttribute("LastImpactValidationDistance", validationDistance)
 	if
-		distanceToImpact > GameConfig.breaker.serverValidationDistanceStuds
+		distanceToImpact > validationDistance
 		or distanceToImpact < -GameConfig.breaker.serverFallbackStuds
 	then
 		return
@@ -61505,12 +62425,15 @@ function RaceService:_updateBreakerZone(racer, progress)
 	end
 
 	local effectiveSpeed = math.max(racer.speed * racer.speedMultiplier, 0.001)
+	local promptLeadSeconds = GameConfig.breaker.promptLeadSeconds
+		+ self:_playerLeadSeconds(racer, 0)
+		+ self:_playerGraceSeconds(racer)
 	for _, obstacle in zone.obstacles do
 		local distanceToImpact = obstacle.progress - progress
 		if
 			not obstacle.promptStarted
 			and distanceToImpact >= 0
-			and distanceToImpact / effectiveSpeed <= GameConfig.breaker.promptLeadSeconds
+			and distanceToImpact / effectiveSpeed <= promptLeadSeconds
 		then
 			self:_startBreakerPrompt(racer, zone, obstacle)
 		end
@@ -61524,11 +62447,7 @@ function RaceService:_updateBreakerZone(racer, progress)
 end
 
 function RaceService:_isNormalPromptTooCloseToObstacle(racer, promptDuration)
-	local progress = math.clamp(
-		(racer.root.Position - racer.startOrigin):Dot(racer.forward),
-		0,
-		racer.trackLength
-	)
+	local progress = racer.authoritativeDistance or 0
 	local nextTriggerProgress = nil
 	for _, obstacle in racer.obstacles do
 		if not obstacle.started and obstacle.triggerProgress >= progress then
@@ -61554,7 +62473,8 @@ function RaceService:_isNormalPromptTooCloseToObstacle(racer, promptDuration)
 	local secondsUntilTrigger = (nextTriggerProgress - progress) / effectiveSpeed
 	return secondsUntilTrigger
 		<= promptDuration
-			+ GameConfig.reactionWindow.scheduleLeadSeconds
+			+ self:_playerLeadSeconds(racer, GameConfig.reactionWindow.scheduleLeadSeconds)
+			+ self:_playerGraceSeconds(racer)
 			+ GameConfig.obstacle.normalPromptBufferSeconds
 end
 
@@ -61562,7 +62482,7 @@ function RaceService:_runReactionLoop(racer)
 	local random = Random.new(racer.player.UserId + self._raceId * 1000)
 
 	while self._state == "Racing" and not racer.finished and racer.raceId == self._raceId do
-		if racer.activeObstacle or racer.activeBreakerZone then
+		if racer.activeObstacle or racer.activeBreakerZone or racer.lavaThreat then
 			task.wait(0.05)
 			continue
 		end
@@ -61577,7 +62497,7 @@ function RaceService:_runReactionLoop(racer)
 		if self._state ~= "Racing" or racer.finished or racer.raceId ~= self._raceId then
 			break
 		end
-		if racer.activeObstacle or racer.activeBreakerZone then
+		if racer.activeObstacle or racer.activeBreakerZone or racer.lavaThreat then
 			continue
 		end
 
@@ -61595,6 +62515,7 @@ function RaceService:_runReactionLoop(racer)
 				or racer.raceId ~= self._raceId
 				or racer.activeObstacle
 				or racer.activeBreakerZone
+				or racer.lavaThreat
 			then
 				break
 			end
@@ -61608,10 +62529,12 @@ function RaceService:_runReactionLoop(racer)
 				task.wait(GameConfig.obstacle.promptSuppressionPollSeconds)
 				break
 			end
-			local scheduleLead = if racer.tempoStage >= 2
+			local sentAt = Workspace:GetServerTimeNow()
+			local baseLead = if racer.tempoStage >= 2
 				then 0
 				else GameConfig.reactionWindow.scheduleLeadSeconds
-			local opensAt = Workspace:GetServerTimeNow() + scheduleLead
+			local scheduleLead = self:_playerLeadSeconds(racer, baseLead)
+			local opensAt = sentAt + scheduleLead
 			local event = {
 				id = self._eventId,
 				opensAt = opensAt,
@@ -61619,6 +62542,7 @@ function RaceService:_runReactionLoop(racer)
 				duration = duration,
 				resolved = false,
 			}
+			self:_stampPrompt(racer, event, "Normal", sentAt)
 			racer.reaction = event
 
 			self._reactionWindowRemote:FireClient(racer.player, {
@@ -61643,7 +62567,7 @@ function RaceService:_runReactionLoop(racer)
 				self._state == "Racing"
 				and not racer.finished
 				and not event.resolved
-				and Workspace:GetServerTimeNow() <= event.closesAt
+				and Workspace:GetServerTimeNow() <= event.resolveAt
 			do
 				task.wait()
 			end
@@ -61655,11 +62579,18 @@ function RaceService:_runReactionLoop(racer)
 			if not event.resolved then
 				event.resolved = true
 				racer.reaction = nil
+				if event.lavaFused and event.waveState then
+					event.waveState.failureResolved = true
+					if racer.lavaReaction == event then
+						racer.lavaReaction = nil
+					end
+					racer.player:SetAttribute("LastLavaVerdict", "Miss")
+				end
 				self:_resolveReaction(racer, "Miss", event.id)
 				break
 			end
 
-			if racer.activeObstacle or racer.activeBreakerZone then
+			if racer.activeObstacle or racer.activeBreakerZone or racer.lavaThreat then
 				break
 			elseif chainIndex < chainLength then
 				task.wait(Speed.tempoForProgress(racer.noMissStreak).chainGapSeconds)
@@ -61678,16 +62609,52 @@ function RaceService:_submitReaction(player, eventId, clientPressedAt)
 	end
 
 	local serverNow = Workspace:GetServerTimeNow()
-	if
-		math.abs(serverNow - clientPressedAt)
-		> GameConfig.reactionWindow.maximumClockDifferenceSeconds
-	then
+	if not self:_isClientTimestampPlausible(racer, serverNow, clientPressedAt) then
+		return
+	end
+	racer.player:SetAttribute("LastReactionReceivedAt", serverNow)
+	racer.player:SetAttribute("LastReactionPressedAt", clientPressedAt)
+	racer.player:SetAttribute("LastReactionEventId", eventId)
+
+	local lavaEvent = racer.lavaReaction
+	if lavaEvent and not lavaEvent.resolved and lavaEvent.id == eventId then
+		local reactionSeconds = NetworkTiming.reactionSeconds(lavaEvent, clientPressedAt)
+		if reactionSeconds == nil then
+			return
+		end
+		local verdict = Reaction.verdictFor(reactionSeconds, lavaEvent.duration)
+		if verdict then
+			lavaEvent.resolved = true
+			racer.lavaReaction = nil
+			racer.validInputCount += 1
+			racer.player:SetAttribute("RaceValidInputs", racer.validInputCount)
+			lavaEvent.waveState.success = verdict == "Good" or verdict == "Perfect"
+			racer.player:SetAttribute("LastLavaVerdict", verdict)
+			if lavaEvent.lavaFused then
+				if racer.reaction == lavaEvent then
+					racer.reaction = nil
+				end
+				if not lavaEvent.waveState.success then
+					lavaEvent.waveState.failureResolved = true
+				end
+				self:_resolveReaction(racer, verdict, lavaEvent.id)
+			else
+				self._reactionWindowRemote:FireClient(racer.player, {
+					action = "result",
+					id = lavaEvent.id,
+					verdict = verdict,
+				})
+			end
+		end
 		return
 	end
 
 	local breakerEvent = racer.breakerReactions[eventId]
 	if breakerEvent and not breakerEvent.resolved then
-		local reactionSeconds = clientPressedAt - breakerEvent.opensAt
+		local reactionSeconds = NetworkTiming.reactionSeconds(breakerEvent, clientPressedAt)
+		if reactionSeconds == nil then
+			return
+		end
 		local verdict = Reaction.verdictFor(reactionSeconds, breakerEvent.duration)
 		if verdict then
 			racer.validInputCount += 1
@@ -61699,7 +62666,10 @@ function RaceService:_submitReaction(player, eventId, clientPressedAt)
 
 	local obstacleEvent = racer.obstacleReactions[eventId]
 	if obstacleEvent and not obstacleEvent.resolved then
-		local reactionSeconds = clientPressedAt - obstacleEvent.opensAt
+		local reactionSeconds = NetworkTiming.reactionSeconds(obstacleEvent, clientPressedAt)
+		if reactionSeconds == nil then
+			return
+		end
 		local verdict = Reaction.verdictFor(reactionSeconds, obstacleEvent.duration)
 		if verdict then
 			racer.validInputCount += 1
@@ -61714,7 +62684,10 @@ function RaceService:_submitReaction(player, eventId, clientPressedAt)
 		return
 	end
 
-	local reactionSeconds = clientPressedAt - event.opensAt
+	local reactionSeconds = NetworkTiming.reactionSeconds(event, clientPressedAt)
+	if reactionSeconds == nil then
+		return
+	end
 	local verdict = Reaction.verdictFor(reactionSeconds, event.duration)
 	if not verdict then
 		return
@@ -61734,6 +62707,8 @@ function RaceService:_finishRacer(racer)
 
 	racer.finished = true
 	racer.reaction = nil
+	racer.lavaReaction = nil
+	racer.lavaThreat = nil
 	table.clear(racer.obstacleReactions)
 	racer.obstacleSequence = nil
 	racer.activeObstacle = nil
@@ -61744,6 +62719,7 @@ function RaceService:_finishRacer(racer)
 	local finishTime = Workspace:GetServerTimeNow() - self._raceStartedAt
 	racer.player:SetAttribute("DistanceRemaining", 0)
 	racer.player:SetAttribute("RaceProgress", 1)
+	racer.player:SetAttribute("AuthoritativeDistance", racer.trackLength)
 	racer.player:SetAttribute("FinishTime", finishTime)
 	racer.player:SetAttribute("Rank", self._finishCount)
 	if self._dataService then
@@ -61768,6 +62744,9 @@ function RaceService:_finishRacer(racer)
 	racer.root.Anchored = false
 	racer.root.AssemblyLinearVelocity = Vector3.zero
 	racer.root.AssemblyAngularVelocity = Vector3.zero
+	pcall(function()
+		racer.root:SetNetworkOwner(nil)
+	end)
 	self._reactionWindowRemote:FireClient(racer.player, { action = "hide" })
 	self._breakerStateRemote:FireClient(racer.player, { action = "clear" })
 end
@@ -61810,21 +62789,25 @@ function RaceService:_updateRacers()
 
 		local speed = racer.speed
 		local effectiveSpeed = speed * racer.speedMultiplier
-		local velocity = racer.root.AssemblyLinearVelocity
 		local forwardSpeed = if racer.recoveringUntil > 0 then 0 else effectiveSpeed
-		local forwardVelocity = racer.forward * forwardSpeed
-		racer.root.AssemblyLinearVelocity =
-			Vector3.new(forwardVelocity.X, velocity.Y, forwardVelocity.Z)
-
-		local progress = math.clamp(
-			(racer.root.Position - racer.startOrigin):Dot(racer.forward),
-			0,
+		local deltaTime = math.max(0, now - racer.lastTickAt)
+		racer.lastTickAt = now
+		racer.authoritativeDistance = MovementPrediction.advanceDistance(
+			racer.authoritativeDistance,
+			forwardSpeed,
+			deltaTime,
 			racer.trackLength
 		)
+		local progress = racer.authoritativeDistance
 		self:_updateBreakerZone(racer, progress)
+		local obstacleTriggerLeadStuds = effectiveSpeed
+			* (self:_playerLeadSeconds(racer, 0) + self:_playerGraceSeconds(racer))
 
 		for _, obstacle in racer.obstacles do
-			if not obstacle.started and progress >= obstacle.triggerProgress then
+			if
+				not obstacle.started
+				and progress >= obstacle.triggerProgress - obstacleTriggerLeadStuds
+			then
 				self:_startObstacleSequence(racer, obstacle)
 				break
 			end
@@ -61860,17 +62843,16 @@ function RaceService:_updateRacers()
 		end
 		if now - racer.lastReplicationAt >= 0.1 then
 			racer.lastReplicationAt = now
+			self:_refreshNetworkTiming(racer, now, false)
 			player:SetAttribute("Speed", speed)
 			player:SetAttribute("EffectiveSpeed", effectiveSpeed)
 			player:SetAttribute("DistanceRemaining", math.max(0, racer.trackLength - progress))
 			player:SetAttribute("RaceProgress", progress / racer.trackLength)
+			player:SetAttribute("AuthoritativeUpdatedAt", now)
+			player:SetAttribute("AuthoritativeDistance", progress)
 		end
 
-		local crossedLaneTarget = progress >= racer.trackLength
-		if
-			isCharacterInsideFinish(racer.character, self._activeTrack.finish)
-			or crossedLaneTarget
-		then
+		if progress >= racer.trackLength then
 			self:_finishRacer(racer)
 		end
 	end
@@ -61927,8 +62909,18 @@ function RaceService:_runRace(eligiblePlayers)
 
 	self:_setState("Racing")
 	self._raceStartedAt = Workspace:GetServerTimeNow()
+	if self._lavaEnabled then
+		self._nextLavaWaveAt = self._raceStartedAt + GameConfig.lavaWave.firstWaveDelaySeconds
+	end
 	for _, racer in self._racers do
+		racer.authoritativeDistance = 0
+		racer.lastTickAt = self._raceStartedAt
+		racer.player:SetAttribute("AuthoritativeDistance", 0)
+		racer.player:SetAttribute("AuthoritativeUpdatedAt", self._raceStartedAt)
 		racer.root.Anchored = false
+		pcall(function()
+			racer.root:SetNetworkOwner(racer.player)
+		end)
 		racer.player:SetAttribute("RaceStatus", "Racing")
 		task.spawn(function()
 			self:_runReactionLoop(racer)
@@ -61938,6 +62930,7 @@ function RaceService:_runRace(eligiblePlayers)
 	while self:_hasActiveRacers() do
 		task.wait(0.1)
 	end
+	self:_clearLavaWaves()
 
 	local participants = {}
 	for player, racer in self._racers do
@@ -62041,6 +63034,7 @@ function RaceService:Start()
 	RunService.Heartbeat:Connect(function()
 		if self._state == "Racing" then
 			self:_updateRacers()
+			self:_updateLavaWaves(Workspace:GetServerTimeNow())
 		end
 	end)
 
@@ -62136,12 +63130,13 @@ return RaceService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="347">
+      <Item class="ModuleScript" referent="353">
         <Properties>
           <string name="Name">SackService</string>
           <string name="Source"><![CDATA[local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
+local SackSizing = require(ReplicatedStorage.Shared.SackSizing)
 
 local SackService = {}
 
@@ -62161,40 +63156,6 @@ local HIDDEN_ACCESSORY_TYPES = {
 	LeftShoe = true,
 	RightShoe = true,
 }
-
-local function projectedHalfHeight(part, referenceCFrame)
-	local relative = referenceCFrame:ToObjectSpace(part.CFrame)
-	local halfSize = part.Size / 2
-	return math.abs(relative.RightVector.Y) * halfSize.X
-		+ math.abs(relative.UpVector.Y) * halfSize.Y
-		+ math.abs(relative.LookVector.Y) * halfSize.Z
-end
-
-local function getLegBottom(character, lowerTorso)
-	local bottom = math.huge
-	local foundLeg = false
-	for _, name in LEG_PART_NAMES do
-		local part = character:FindFirstChild(name)
-		if part and part:IsA("BasePart") then
-			local localPosition = lowerTorso.CFrame:PointToObjectSpace(part.Position)
-			bottom =
-				math.min(bottom, localPosition.Y - projectedHalfHeight(part, lowerTorso.CFrame))
-			foundLeg = true
-		end
-	end
-	return if foundLeg then bottom else nil
-end
-
-local function getTargetHeight(character, humanoid, lowerTorso)
-	local config = GameConfig.sack
-	local legBottom = getLegBottom(character, lowerTorso)
-	if not legBottom then
-		legBottom = -humanoid.HipHeight - lowerTorso.Size.Y / 2
-	end
-	local sackTop = lowerTorso.Size.Y * config.topHeightRatio
-	return math.max(config.minimumHeightStuds, sackTop - legBottom + config.bottomPaddingStuds),
-		sackTop
-end
 
 local function getSackPartTemplate()
 	local config = GameConfig.sack
@@ -62304,30 +63265,15 @@ function SackService.Attach(character)
 		return false
 	end
 
-	local targetHeight, sackTop = getTargetHeight(character, humanoid, lowerTorso)
-	local verticalScale = math.clamp(
-		targetHeight / sourcePart.Size.Y,
-		config.minimumVerticalScale,
-		config.maximumVerticalScale
-	)
-	local targetWidth = math.max(
-		config.minimumWidthStuds,
-		lowerTorso.Size.X * config.widthMultiplier + config.widthPaddingStuds,
-		math.min(config.maximumWidthStuds, targetHeight * config.widthToHeightRatio)
-	)
-	local targetDepth = math.max(
-		config.minimumDepthStuds,
-		lowerTorso.Size.Z * config.depthMultiplier + config.depthPaddingStuds,
-		math.min(config.maximumDepthStuds, targetHeight * config.depthToHeightRatio)
-	)
+	local sizeClass = SackSizing.getSizeClass(config.sizeClasses, humanoid.HipHeight)
 
 	local sack = sourcePart:Clone()
 	sack.Name = config.mountedPartName
 	sack:SetAttribute(config.mountedAttribute, true)
+	sack:SetAttribute(config.sizeClassAttribute, sizeClass.name)
+	sack:SetAttribute(config.classificationValueAttribute, humanoid.HipHeight)
 	sack.PivotOffset = CFrame.identity
-	-- Leg length should only affect sack height. Uniform scaling made tall,
-	-- slim avatars wear an absurdly wide sack.
-	sack.Size = Vector3.new(targetWidth, sourcePart.Size.Y * verticalScale, targetDepth)
+	sack.Size = sizeClass.size
 	sack.Anchored = false
 	sack.CanCollide = false
 	sack.CanTouch = false
@@ -62336,8 +63282,7 @@ function SackService.Attach(character)
 	sack.CastShadow = true
 	sack.Parent = character
 
-	local centerY = sackTop - sack.Size.Y / 2
-	local localMount = CFrame.new(0, centerY, config.forwardOffsetStuds)
+	local localMount = CFrame.new(sizeClass.mountOffset)
 		* CFrame.Angles(
 			math.rad(config.rotationDegrees.X),
 			math.rad(config.rotationDegrees.Y),
@@ -62362,7 +63307,7 @@ return SackService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="348">
+      <Item class="ModuleScript" referent="354">
         <Properties>
           <string name="Name">TrackService</string>
           <string name="Source"><![CDATA[local CollectionService = game:GetService("CollectionService")
@@ -62593,7 +63538,7 @@ return TrackService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="349">
+      <Item class="ModuleScript" referent="355">
         <Properties>
           <string name="Name">TrailService</string>
           <string name="Source"><![CDATA[local Players = game:GetService("Players")
@@ -62735,26 +63680,26 @@ return TrailService
         </Properties>
       </Item>
     </Item>
-    <Item class="Folder" referent="350">
+    <Item class="Folder" referent="356">
       <Properties>
         <string name="Name">ServerPackages</string>
       </Properties>
-      <Item class="ModuleScript" referent="351">
+      <Item class="ModuleScript" referent="357">
         <Properties>
           <string name="Name">ProfileStore</string>
           <string name="Source"><![CDATA[return require(script.Parent._Index["lm-loleris_profilestore@1.0.3"]["profilestore"])
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Folder" referent="352">
+      <Item class="Folder" referent="358">
         <Properties>
           <string name="Name">_Index</string>
         </Properties>
-        <Item class="Folder" referent="353">
+        <Item class="Folder" referent="359">
           <Properties>
             <string name="Name">lm-loleris_profilestore@1.0.3</string>
           </Properties>
-          <Item class="ModuleScript" referent="354">
+          <Item class="ModuleScript" referent="360">
             <Properties>
               <string name="Name">profilestore</string>
               <string name="Source">--[[
@@ -65006,25 +65951,25 @@ return ProfileStore</string>
       </Item>
     </Item>
   </Item>
-  <Item class="ServerStorage" referent="355">
+  <Item class="ServerStorage" referent="361">
     <Properties>
       <string name="Name">ServerStorage</string>
     </Properties>
-    <Item class="Folder" referent="356">
+    <Item class="Folder" referent="362">
       <Properties>
         <string name="Name">Tracks</string>
       </Properties>
     </Item>
   </Item>
-  <Item class="StarterPlayer" referent="357">
+  <Item class="StarterPlayer" referent="363">
     <Properties>
       <string name="Name">StarterPlayer</string>
     </Properties>
-    <Item class="StarterPlayerScripts" referent="358">
+    <Item class="StarterPlayerScripts" referent="364">
       <Properties>
         <string name="Name">StarterPlayerScripts</string>
       </Properties>
-      <Item class="LocalScript" referent="359">
+      <Item class="LocalScript" referent="365">
         <Properties>
           <string name="Name">Client</string>
           <string name="Source"><![CDATA[local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -65036,14 +65981,15 @@ local App = require(script.App)
 local BreakerController = require(script.BreakerController)
 local CharacterAnimationController = require(script.CharacterAnimationController)
 local DynamicScaleController = require(script.DynamicScaleController)
+local EnvironmentVfxController = require(script.EnvironmentVfxController)
 local FinishNotificationController = require(script.FinishNotificationController)
 local GuardController = require(script.GuardController)
 local LobbyTimerController = require(script.LobbyTimerController)
 local MusicApp = require(script.MusicApp)
+local MovementController = require(script.MovementController)
 local OnFireController = require(script.OnFireController)
 local PodiumCinematicController = require(script.PodiumCinematicController)
 local RaceTimerController = require(script.RaceTimerController)
-local RaceJumpController = require(script.RaceJumpController)
 local RaceResetController = require(script.RaceResetController)
 local RaceTrackerController = require(script.RaceTrackerController)
 local SackArmPoseController = require(script.SackArmPoseController)
@@ -65069,12 +66015,13 @@ GuardController.Start(
 )
 CharacterAnimationController.Start()
 DynamicScaleController.Start()
+EnvironmentVfxController.Start()
 FinishNotificationController.Start()
 LobbyTimerController.Start()
+MovementController.Start()
 OnFireController.Start()
 PodiumCinematicController.Start(remotes:WaitForChild("PodiumResults"), SoundController)
 RaceTimerController.Start(SoundController)
-RaceJumpController.Start()
 RaceResetController.Start()
 RaceTrackerController.Start()
 SackArmPoseController.Start()
@@ -65108,7 +66055,7 @@ musicRoot:render(React.createElement(MusicApp, {
 }))
 ]]></string>
         </Properties>
-        <Item class="ModuleScript" referent="360">
+        <Item class="ModuleScript" referent="366">
           <Properties>
             <string name="Name">App</string>
             <string name="Source"><![CDATA[local ContextActionService = game:GetService("ContextActionService")
@@ -65120,6 +66067,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Packages = ReplicatedStorage.Packages
 local React = require(Packages.React)
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
+local NetworkTiming = require(ReplicatedStorage.Shared.NetworkTiming)
 
 local e = React.createElement
 
@@ -65269,6 +66217,7 @@ local function App(props)
 	local feedback, setFeedback = React.useState(nil)
 	local reactionTokens = React.useRef({})
 	local reactionPositions = React.useRef({})
+	local reactionMorphs = React.useRef({})
 	local feedbackToken = React.useRef(0)
 	local feedbackLabelRef = React.useRef(nil)
 
@@ -65279,6 +66228,7 @@ local function App(props)
 			nextReactions[id] = nil
 			reactionsRef.current = nextReactions
 		end
+		reactionMorphs.current[id] = nil
 		setReactions(function(current)
 			if not current[id] then
 				return current
@@ -65294,6 +66244,7 @@ local function App(props)
 			reactionTokens.current[id] = (reactionTokens.current[id] or 0) + 1
 		end
 		reactionsRef.current = {}
+		reactionMorphs.current = {}
 		setReactions({})
 	end
 
@@ -65312,14 +66263,26 @@ local function App(props)
 		local connection = props.reactionRemote.OnClientEvent:Connect(function(payload)
 			if payload.action == "show" then
 				local id = payload.id
+				local receivedAt = Workspace:GetServerTimeNow()
+				if
+					not NetworkTiming.shouldDisplayPrompt(
+						receivedAt,
+						payload.opensAt,
+						payload.duration,
+						GameConfig.networking.minimumLatePromptSeconds
+					)
+				then
+					return
+				end
 				reactionTokens.current[id] = (reactionTokens.current[id] or 0) + 1
 				local token = reactionTokens.current[id]
 				reactionPositions.current[id] = { x = payload.screenX, y = payload.screenY }
-				local delaySeconds = math.max(0, payload.opensAt - Workspace:GetServerTimeNow())
+				local delaySeconds = math.max(0, payload.opensAt - receivedAt)
 				task.delay(delaySeconds, function()
 					if reactionTokens.current[id] ~= token then
 						return
 					end
+					local morph = reactionMorphs.current[id]
 					local reaction = {
 						id = id,
 						opensAt = payload.opensAt,
@@ -65327,8 +66290,12 @@ local function App(props)
 						expiresAt = payload.opensAt + payload.duration,
 						screenX = payload.screenX,
 						screenY = payload.screenY,
-						skillId = payload.skillId or GameConfig.reactionWindow.skillId,
-						obstacle = payload.obstacle == true,
+						skillId = if morph
+							then morph.skillId
+							else payload.skillId or GameConfig.reactionWindow.skillId,
+						obstacle = if morph
+							then morph.obstacle == true
+							else payload.obstacle == true,
 					}
 					local currentReactions = table.clone(reactionsRef.current)
 					currentReactions[id] = reaction
@@ -65347,6 +66314,21 @@ local function App(props)
 						end
 					)
 				end)
+			elseif payload.action == "morph" then
+				reactionMorphs.current[payload.id] = {
+					skillId = payload.skillId,
+					obstacle = payload.obstacle == true,
+				}
+				local currentReaction = reactionsRef.current[payload.id]
+				if currentReaction then
+					local morphedReaction = table.clone(currentReaction)
+					morphedReaction.skillId = payload.skillId
+					morphedReaction.obstacle = payload.obstacle == true
+					local nextReactions = table.clone(reactionsRef.current)
+					nextReactions[payload.id] = morphedReaction
+					reactionsRef.current = nextReactions
+					setReactions(nextReactions)
+				end
 			elseif payload.action == "remove" or payload.action == "obstacleVerdict" then
 				removeReaction(payload.id)
 			elseif payload.action == "result" then
@@ -65488,13 +66470,13 @@ local function App(props)
 			TextStrokeTransparency = 1,
 			ref = feedbackLabelRef,
 		}, {
-			Outline = e("UIStroke", {
+			Outline = GameConfig.ui.feedback.strokeEnabled and e("UIStroke", {
 				ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual,
 				Color = feedbackOutlineColor(feedback.text),
 				LineJoinMode = Enum.LineJoinMode.Round,
 				Thickness = 2.5,
 				Transparency = 0.04,
-			}),
+			}) or nil,
 		}) or nil,
 	}
 	for id, reaction in reactions do
@@ -65515,7 +66497,7 @@ return App
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="361">
+        <Item class="ModuleScript" referent="367">
           <Properties>
             <string name="Name">BreakerController</string>
             <string name="Source"><![CDATA[local Debris = game:GetService("Debris")
@@ -65525,6 +66507,7 @@ local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
+local ImpactFeedback = require(ReplicatedStorage.Shared.ImpactFeedback)
 local SoundController = require(script.Parent.SoundController)
 
 local BreakerController = {}
@@ -65666,7 +66649,6 @@ local function animateObstacle(obstacle, impactPart, throwDirection, forward)
 
 	Debris:AddItem(debris, GameConfig.breaker.debrisLifetimeSeconds)
 	emitBreakerExplosion(impactPart)
-	SoundController.Play("breakerImpact")
 end
 
 function BreakerController.Start(stateRemote, submitImpactRemote, impactRemote)
@@ -65714,6 +66696,9 @@ function BreakerController.Start(stateRemote, submitImpactRemote, impactRemote)
 			return
 		end
 		animateObstacle(obstacle, impactPart, payload.throwDirection, payload.forward)
+		if ImpactFeedback.shouldPlaySound(player.UserId, payload.soundUserId, false) then
+			SoundController.Play("breakerImpact")
+		end
 	end)
 
 	RunService.RenderStepped:Connect(function()
@@ -65751,6 +66736,7 @@ function BreakerController.Start(stateRemote, submitImpactRemote, impactRemote)
 					prediction.throwDirection,
 					prediction.forward
 				)
+				SoundController.Play("breakerImpact")
 				submitImpactRemote:FireServer(impactPart, Workspace:GetServerTimeNow())
 			end
 		end
@@ -65761,7 +66747,7 @@ return BreakerController
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="362">
+        <Item class="ModuleScript" referent="368">
           <Properties>
             <string name="Name">CharacterAnimationController</string>
             <string name="Source"><![CDATA[local Players = game:GetService("Players")
@@ -65925,7 +66911,10 @@ function CharacterAnimationController.Start()
 			end
 
 			local isRecovering = player:GetAttribute("IsRecovering")
-			local shouldWalk = raceStatus == "Racing" and not isRecovering
+			local humanoidState = humanoid:GetState()
+			local isAirborne = humanoidState == Enum.HumanoidStateType.Jumping
+				or humanoidState == Enum.HumanoidStateType.Freefall
+			local shouldWalk = raceStatus == "Racing" and not isRecovering and not isAirborne
 
 			if isRecovering then
 				if idleTrack and idleTrack.IsPlaying then
@@ -65985,6 +66974,7 @@ function CharacterAnimationController.Start()
 			characterConnections,
 			player:GetAttributeChangedSignal("EffectiveSpeed"):Connect(updateTrack)
 		)
+		table.insert(characterConnections, humanoid.StateChanged:Connect(updateTrack))
 		table.insert(characterConnections, humanoid.Died:Connect(clearCharacter))
 		updateTrack()
 	end
@@ -65999,7 +66989,7 @@ return CharacterAnimationController
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="363">
+        <Item class="ModuleScript" referent="369">
           <Properties>
             <string name="Name">DynamicScaleController</string>
             <string name="Source"><![CDATA[local CollectionService = game:GetService("CollectionService")
@@ -66084,7 +67074,118 @@ return DynamicScaleController
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="364">
+        <Item class="ModuleScript" referent="370">
+          <Properties>
+            <string name="Name">EnvironmentVfxController</string>
+            <string name="Source"><![CDATA[local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+
+local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
+
+local EnvironmentVfxController = {}
+
+local function prepareEmitterPart(template, config)
+	local part = template:Clone()
+	part.Name = config.runtimeName
+	part.Anchored = true
+	part.CanCollide = false
+	part.CanQuery = false
+	part.CanTouch = false
+	part.CastShadow = false
+	part.Massless = true
+	part.Size = Vector3.new(0.1, 0.1, 0.1)
+
+	local emitters = {}
+	local windDirection = config.windDirection.Unit
+	local windVelocity = config.windSpeed * config.windPower
+	for _, descendant in part:GetDescendants() do
+		if descendant:IsA("BaseScript") then
+			descendant:Destroy()
+		elseif descendant:IsA("ParticleEmitter") then
+			descendant.Enabled = false
+			descendant.Rate = 0
+			descendant.LockedToPart = false
+			descendant.EmissionDirection = Enum.NormalId.Front
+			descendant.Speed = NumberRange.new(windVelocity * 0.8, windVelocity * 1.2)
+			descendant.Acceleration = Vector3.new(0, -config.fallAcceleration, 0)
+			table.insert(emitters, descendant)
+		end
+	end
+
+	return part, emitters, windDirection
+end
+
+local function getSpawnPosition(camera, config)
+	local pitch = math.rad(
+		math.random(config.minimumPitchDegrees * 100, config.maximumPitchDegrees * 100) / 100
+	)
+	local yaw =
+		math.rad(math.random(-config.maximumYawDegrees * 100, config.maximumYawDegrees * 100) / 100)
+	local distance = math.random(config.minimumDistance * 100, config.maximumDistance * 100) / 100
+	return (camera.CFrame * CFrame.Angles(pitch, yaw, 0) * CFrame.new(0, 0, -distance)).Position
+end
+
+function EnvironmentVfxController.Start()
+	local config = GameConfig.environmentVfx.leaf
+	if not config.enabled then
+		return
+	end
+
+	local template = ReplicatedStorage:FindFirstChild(config.templateName)
+	if not template or not template:IsA("BasePart") then
+		warn(
+			`[BalapKarung] Template efek daun ReplicatedStorage.{config.templateName} tidak ditemukan`
+		)
+		return
+	end
+
+	local oldPart = Workspace:FindFirstChild(config.runtimeName)
+	if oldPart then
+		oldPart:Destroy()
+	end
+
+	local part, emitters, windDirection = prepareEmitterPart(template, config)
+	if #emitters == 0 then
+		part:Destroy()
+		warn(`[BalapKarung] Template efek daun tidak memiliki ParticleEmitter`)
+		return
+	end
+	part.Parent = Workspace
+
+	local interval = 1 / math.max(config.spawnRate, 0.01)
+	local elapsed = interval
+	RunService.Heartbeat:Connect(function(deltaTime)
+		if not part.Parent then
+			return
+		end
+		local camera = Workspace.CurrentCamera
+		if not camera then
+			return
+		end
+
+		elapsed += deltaTime
+		local emitCount = math.min(math.floor(elapsed / interval), 2)
+		if emitCount == 0 then
+			return
+		end
+		elapsed -= emitCount * interval
+
+		for _ = 1, emitCount do
+			local position = getSpawnPosition(camera, config)
+			part.CFrame = CFrame.lookAt(position, position + windDirection)
+			for _, emitter in emitters do
+				emitter:Emit(1)
+			end
+		end
+	end)
+end
+
+return EnvironmentVfxController
+]]></string>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="371">
           <Properties>
             <string name="Name">FinishNotificationController</string>
             <string name="Source"><![CDATA[local Players = game:GetService("Players")
@@ -66333,7 +67434,7 @@ return FinishNotificationController
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="365">
+        <Item class="ModuleScript" referent="372">
           <Properties>
             <string name="Name">GuardController</string>
             <string name="Source"><![CDATA[local CollectionService = game:GetService("CollectionService")
@@ -66344,6 +67445,7 @@ local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
+local ImpactFeedback = require(ReplicatedStorage.Shared.ImpactFeedback)
 local SoundController = require(script.Parent.SoundController)
 
 local GuardController = {}
@@ -66422,7 +67524,9 @@ function GuardController.Start(submitRemote, broadcastRemote, crashRemote)
 		end
 
 		animateBarrier(barrier, payload.throwDirection, payload.forward)
-		SoundController.Play("guardSwing")
+		if ImpactFeedback.shouldPlaySound(player.UserId, payload.soundUserId, false) then
+			SoundController.Play("guardSwing")
+		end
 	end)
 
 	RunService.RenderStepped:Connect(function()
@@ -66550,7 +67654,7 @@ return GuardController
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="366">
+        <Item class="ModuleScript" referent="373">
           <Properties>
             <string name="Name">LobbyTimerController</string>
             <string name="Source"><![CDATA[local Players = game:GetService("Players")
@@ -66604,7 +67708,116 @@ return LobbyTimerController
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="367">
+        <Item class="ModuleScript" referent="374">
+          <Properties>
+            <string name="Name">MovementController</string>
+            <string name="Source"><![CDATA[local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+
+local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
+local MovementPrediction = require(ReplicatedStorage.Shared.MovementPrediction)
+
+local MovementController = {}
+
+local player = Players.LocalPlayer
+
+local function horizontal(vector)
+	return Vector3.new(vector.X, 0, vector.Z)
+end
+
+local function moveToExpectedPosition(root, expectedPosition, forward, alpha)
+	local currentPosition = root.Position
+	local targetPosition = Vector3.new(expectedPosition.X, currentPosition.Y, expectedPosition.Z)
+	local position = currentPosition:Lerp(targetPosition, alpha)
+	root.CFrame = CFrame.lookAt(position, position + forward)
+end
+
+function MovementController.Start()
+	RunService.RenderStepped:Connect(function(deltaTime)
+		local character = player.Character
+		local root = character and character:FindFirstChild("HumanoidRootPart")
+		if not root or not root:IsA("BasePart") or root.Anchored then
+			return
+		end
+		local raceStatus = player:GetAttribute("RaceStatus")
+		if raceStatus ~= "Racing" then
+			if raceStatus == "Finished" then
+				local velocity = root.AssemblyLinearVelocity
+				root.AssemblyLinearVelocity = Vector3.new(0, velocity.Y, 0)
+			end
+			return
+		end
+
+		local forwardAttribute = player:GetAttribute("RaceForward")
+		local startOrigin = player:GetAttribute("RaceStartOrigin")
+		local trackLength = player:GetAttribute("TrackLength")
+		local authoritativeDistance = player:GetAttribute("AuthoritativeDistance")
+		local authoritativeUpdatedAt = player:GetAttribute("AuthoritativeUpdatedAt")
+		if
+			typeof(forwardAttribute) ~= "Vector3"
+			or typeof(startOrigin) ~= "Vector3"
+			or type(trackLength) ~= "number"
+			or type(authoritativeDistance) ~= "number"
+			or type(authoritativeUpdatedAt) ~= "number"
+		then
+			return
+		end
+
+		local forward = horizontal(forwardAttribute)
+		if forward.Magnitude < 0.001 or trackLength <= 0 then
+			return
+		end
+		forward = forward.Unit
+
+		local isRecovering = player:GetAttribute("IsRecovering") == true
+		local effectiveSpeed = player:GetAttribute("EffectiveSpeed") or 0
+		local forwardSpeed = if isRecovering then 0 else math.max(0, effectiveSpeed)
+		local velocity = root.AssemblyLinearVelocity
+		local forwardVelocity = forward * forwardSpeed
+		root.AssemblyLinearVelocity = Vector3.new(forwardVelocity.X, velocity.Y, forwardVelocity.Z)
+
+		if isRecovering then
+			return
+		end
+		local predictedAuthoritativeDistance = MovementPrediction.extrapolateDistance(
+			authoritativeDistance,
+			forwardSpeed,
+			authoritativeUpdatedAt,
+			Workspace:GetServerTimeNow(),
+			GameConfig.movement.maximumExtrapolationSeconds,
+			trackLength
+		)
+
+		local localDistance =
+			MovementPrediction.progressAt(root.Position, startOrigin, forward, trackLength)
+		local mode = MovementPrediction.reconciliationMode(
+			localDistance,
+			predictedAuthoritativeDistance,
+			GameConfig.movement.smoothCorrectionThresholdStuds,
+			GameConfig.movement.snapCorrectionThresholdStuds
+		)
+		if mode == "None" then
+			return
+		end
+
+		local expectedPosition = startOrigin + forward * predictedAuthoritativeDistance
+		local alpha = if mode == "Snap"
+			then 1
+			else MovementPrediction.smoothingAlpha(
+				deltaTime,
+				GameConfig.movement.smoothCorrectionRate
+			)
+		moveToExpectedPosition(root, expectedPosition, forward, alpha)
+	end)
+end
+
+return MovementController
+]]></string>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="375">
           <Properties>
             <string name="Name">MusicApp</string>
             <string name="Source"><![CDATA[local CollectionService = game:GetService("CollectionService")
@@ -67064,7 +68277,7 @@ return MusicApp
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="368">
+        <Item class="ModuleScript" referent="376">
           <Properties>
             <string name="Name">OnFireController</string>
             <string name="Source"><![CDATA[local Players = game:GetService("Players")
@@ -67075,87 +68288,6 @@ local Workspace = game:GetService("Workspace")
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 
 local OnFireController = {}
-
-local function createEdge(parent, name, size, position, transparency)
-	local edge = Instance.new("Frame")
-	edge.Name = name
-	edge.BackgroundColor3 = Color3.fromRGB(255, 58, 12)
-	edge.BackgroundTransparency = 0.45
-	edge.BorderSizePixel = 0
-	edge.Position = position
-	edge.Size = size
-	edge.Parent = parent
-
-	local gradient = Instance.new("UIGradient")
-	gradient.Color = ColorSequence.new(Color3.fromRGB(255, 32, 8), Color3.fromRGB(255, 170, 28))
-	gradient.Transparency = transparency
-	gradient.Parent = edge
-	return gradient
-end
-
-local function createVignette(playerGui)
-	local existing = playerGui:FindFirstChild("BalapKarungOnFireEffects")
-	if existing then
-		existing:Destroy()
-	end
-
-	local screenGui = Instance.new("ScreenGui")
-	screenGui.Name = "BalapKarungOnFireEffects"
-	screenGui.DisplayOrder = 9000
-	screenGui.IgnoreGuiInset = true
-	screenGui.ResetOnSpawn = false
-	screenGui.Parent = playerGui
-
-	local group = Instance.new("CanvasGroup")
-	group.Name = "FireVignette"
-	group.BackgroundTransparency = 1
-	group.GroupTransparency = 1
-	group.Size = UDim2.fromScale(1, 1)
-	group.Visible = false
-	group.Parent = screenGui
-
-	local transparentToFire = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 1),
-		NumberSequenceKeypoint.new(1, 0.08),
-	})
-	local fireToTransparent = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0.08),
-		NumberSequenceKeypoint.new(1, 1),
-	})
-
-	local top = createEdge(
-		group,
-		"TopFire",
-		UDim2.fromScale(1, 0.08),
-		UDim2.fromScale(0, 0),
-		fireToTransparent
-	)
-	top.Rotation = 90
-	local bottom = createEdge(
-		group,
-		"BottomFire",
-		UDim2.fromScale(1, 0.1),
-		UDim2.fromScale(0, 0.9),
-		transparentToFire
-	)
-	bottom.Rotation = 90
-	createEdge(
-		group,
-		"LeftFire",
-		UDim2.fromScale(0.05, 1),
-		UDim2.fromScale(0, 0),
-		fireToTransparent
-	)
-	createEdge(
-		group,
-		"RightFire",
-		UDim2.fromScale(0.05, 1),
-		UDim2.fromScale(0.95, 0),
-		transparentToFire
-	)
-
-	return group
-end
 
 local function transparencyForProgress(progressRatio)
 	if progressRatio <= 0 then
@@ -67176,6 +68308,10 @@ end
 function OnFireController.Start()
 	local player = Players.LocalPlayer
 	local playerGui = player:WaitForChild("PlayerGui")
+	local legacyVignette = playerGui:FindFirstChild("BalapKarungOnFireEffects")
+	if legacyVignette then
+		legacyVignette:Destroy()
+	end
 	local fillValue = Instance.new("NumberValue")
 	local fillTween = nil
 	local onFireDrainTween = nil
@@ -67186,10 +68322,7 @@ function OnFireController.Start()
 	local baseDisplayScale = 1
 	local displayPulse = nil
 	local cameraTween = nil
-	local vignettePulse = nil
 	local effectWasOnFire = false
-
-	local vignette = createVignette(playerGui)
 
 	local function renderFill()
 		if not fillGradient then
@@ -67273,10 +68406,6 @@ function OnFireController.Start()
 			displayPulse:Cancel()
 			displayPulse = nil
 		end
-		if vignettePulse then
-			vignettePulse:Cancel()
-			vignettePulse = nil
-		end
 		if onFireDrainTween then
 			onFireDrainTween:Cancel()
 			onFireDrainTween = nil
@@ -67297,14 +68426,6 @@ function OnFireController.Start()
 				{ Value = 0 }
 			)
 			onFireDrainTween:Play()
-			vignette.Visible = true
-			vignette.GroupTransparency = 0.68
-			vignettePulse = TweenService:Create(
-				vignette,
-				TweenInfo.new(0.48, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
-				{ GroupTransparency = 0.8 }
-			)
-			vignettePulse:Play()
 			if displayScale then
 				displayScale.Scale = baseDisplayScale
 				displayPulse = TweenService:Create(
@@ -67316,8 +68437,6 @@ function OnFireController.Start()
 			end
 		else
 			tweenProgress()
-			vignette.Visible = false
-			vignette.GroupTransparency = 1
 			if displayScale then
 				displayScale.Scale = baseDisplayScale
 			end
@@ -67358,7 +68477,7 @@ return OnFireController
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="369">
+        <Item class="ModuleScript" referent="377">
           <Properties>
             <string name="Name">PodiumCinematicController</string>
             <string name="Source"><![CDATA[local CollectionService = game:GetService("CollectionService")
@@ -67380,89 +68499,71 @@ local function findTaggedDescendant(tag, ancestor)
 	return nil
 end
 
-local function cloneCharacter(result)
-	local sourcePlayer = Players:GetPlayerByUserId(result.userId)
-	local sourceCharacter = sourcePlayer and sourcePlayer.Character
-	if sourceCharacter then
-		local wasArchivable = sourceCharacter.Archivable
-		sourceCharacter.Archivable = true
-		local clone = sourceCharacter:Clone()
-		sourceCharacter.Archivable = wasArchivable
-		return clone
-	end
-
-	local success, model = pcall(function()
-		return Players:CreateHumanoidModelFromUserIdAsync(result.userId)
-	end)
-	return if success then model else nil
-end
-
-local function playDance(character)
-	local humanoid = character:FindFirstChildOfClass("Humanoid")
-	if not humanoid then
-		return
-	end
-
-	local played = false
-	pcall(function()
-		played = humanoid:PlayEmote("dance")
-	end)
-	if played then
-		return
-	end
-
-	local animator = humanoid:FindFirstChildOfClass("Animator")
-	if not animator then
-		animator = Instance.new("Animator")
-		animator.Parent = humanoid
-	end
-	local animation = Instance.new("Animation")
-	animation.AnimationId = if humanoid.RigType == Enum.HumanoidRigType.R15
-		then GameConfig.ui.podiumCinematic.danceR15AnimationId
-		else GameConfig.ui.podiumCinematic.danceR6AnimationId
-	local track = animator:LoadAnimation(animation)
-	track.Looped = true
-	track.Priority = Enum.AnimationPriority.Action
-	track:Play(0.2)
-	animation:Destroy()
-end
-
-local function positionCharacter(character, floorPart, cameraPosition)
-	local root = character:FindFirstChild("HumanoidRootPart")
-	local humanoid = character:FindFirstChildOfClass("Humanoid")
-	if not root or not root:IsA("BasePart") or not humanoid then
-		return false
-	end
-
-	for _, descendant in character:GetDescendants() do
-		if descendant:IsA("BaseScript") then
-			descendant:Destroy()
-		elseif descendant:IsA("BasePart") then
-			descendant.CanCollide = false
-			descendant.CanTouch = false
-			descendant.CanQuery = false
-			descendant.Massless = true
-		end
-	end
-	root.Anchored = true
-	humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
-
-	local height = floorPart.Size.Y / 2
-		+ humanoid.HipHeight
-		+ root.Size.Y / 2
-		+ GameConfig.ui.podiumCinematic.characterHeightOffset
-	local position = floorPart.Position + floorPart.CFrame.UpVector * height
-	character:PivotTo(
-		CFrame.lookAt(position, Vector3.new(cameraPosition.X, position.Y, cameraPosition.Z))
-	)
-	return true
-end
-
 local function formatFinishTime(result)
 	if result.rank and result.rank > 0 and type(result.finishTime) == "number" then
 		return string.format("%.2fs", result.finishTime)
 	end
 	return "-"
+end
+
+local function clearCinematicAvatar(gui)
+	local existing = gui:FindFirstChild("CinematicAvatar")
+	if existing then
+		existing:Destroy()
+	end
+end
+
+local function createCinematicAvatar(gui, result, fallbackUserId)
+	clearCinematicAvatar(gui)
+	local config = GameConfig.ui.podiumCinematic
+	local userId = if result then result.userId else fallbackUserId
+	local rank = if result then result.rank else 0
+
+	local avatar = Instance.new("ImageLabel")
+	avatar.Name = "CinematicAvatar"
+	avatar.AnchorPoint = Vector2.new(0.5, 0.5)
+	avatar.BackgroundColor3 = Color3.fromRGB(22, 29, 45)
+	avatar.Position = UDim2.fromScale(config.avatarCenterX, config.avatarCenterY)
+	avatar.Size = UDim2.fromScale(config.avatarHeightScale, config.avatarHeightScale)
+	avatar.Image = ""
+	avatar.ScaleType = Enum.ScaleType.Crop
+	avatar.ZIndex = 4
+	avatar.Parent = gui
+
+	local aspect = Instance.new("UIAspectRatioConstraint")
+	aspect.AspectRatio = 1
+	aspect.DominantAxis = Enum.DominantAxis.Height
+	aspect.Parent = avatar
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(1, 0)
+	corner.Parent = avatar
+
+	local stroke = Instance.new("UIStroke")
+	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	stroke.Color = if rank == 1
+		then Color3.fromRGB(255, 219, 45)
+		elseif rank == 2 then Color3.fromRGB(218, 228, 242)
+		elseif rank == 3 then Color3.fromRGB(216, 135, 72)
+		else Color3.fromRGB(239, 244, 252)
+	stroke.Thickness = config.avatarStrokeThickness
+	stroke.Transparency = 0.05
+	stroke.Parent = avatar
+
+	task.spawn(function()
+		local success, image = pcall(function()
+			return Players:GetUserThumbnailAsync(
+				userId,
+				Enum.ThumbnailType.HeadShot,
+				Enum.ThumbnailSize.Size420x420
+			)
+		end)
+		if success and avatar.Parent then
+			avatar.Image = image
+		end
+	end)
+
+	return avatar
 end
 
 local function getResultTitle(result)
@@ -67625,16 +68726,8 @@ function PodiumCinematicController.Start(resultsRemote, soundController)
 		localScene.Name = config.localSceneName
 		localScene.Parent = Workspace
 		local cameraPart = findTaggedDescendant(config.cameraTag, localScene)
-		local characterSpot = findTaggedDescendant(config.characterSpotTag, localScene)
-		if
-			not cameraPart
-			or not cameraPart:IsA("BasePart")
-			or not characterSpot
-			or not characterSpot:IsA("BasePart")
-		then
-			warn(
-				"[BalapKarung] Results cinematic membutuhkan PodiumCamera dan ResultsCharacterSpot"
-			)
+		if not cameraPart or not cameraPart:IsA("BasePart") then
+			warn("[BalapKarung] Results cinematic membutuhkan PodiumCamera")
 			localScene:Destroy()
 			return
 		end
@@ -67647,9 +68740,6 @@ function PodiumCinematicController.Start(resultsRemote, soundController)
 		local originalFieldOfView = camera.FieldOfView
 		local originalGlobalShadows = Lighting.GlobalShadows
 		local previousGuiStates = {}
-		local characterFolder = Instance.new("Folder")
-		characterFolder.Name = "LocalResultsCharacter"
-		characterFolder.Parent = localScene
 
 		for _, child in playerGui:GetChildren() do
 			if child:IsA("ScreenGui") then
@@ -67678,6 +68768,7 @@ function PodiumCinematicController.Start(resultsRemote, soundController)
 				soundController.Stop("resultsCinematic")
 			end
 			resultsGui.Enabled = false
+			clearCinematicAvatar(resultsGui)
 			clearResultRows(resultsGui.LeaderboardPanel.Rows)
 			localScene:Destroy()
 			Lighting.GlobalShadows = originalGlobalShadows
@@ -67703,24 +68794,11 @@ function PodiumCinematicController.Start(resultsRemote, soundController)
 
 		local ownResult
 		ownResult, skipConnection = populateResultsGui(resultsGui, payload.results, player, cleanup)
+		createCinematicAvatar(resultsGui, ownResult, player.UserId)
 		resultsGui.Enabled = true
 		if soundController then
 			soundController.Play("resultsCinematic")
 		end
-		if ownResult then
-			local character = cloneCharacter(ownResult)
-			if character then
-				character.Name = `ResultsCharacter_{ownResult.name}`
-				character:ScaleTo(config.characterScale)
-				character.Parent = characterFolder
-				if positionCharacter(character, characterSpot, cameraPart.Position) then
-					playDance(character)
-				else
-					character:Destroy()
-				end
-			end
-		end
-
 		activeCleanup = cleanup
 	end)
 end
@@ -67729,46 +68807,7 @@ return PodiumCinematicController
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="370">
-          <Properties>
-            <string name="Name">RaceJumpController</string>
-            <string name="Source"><![CDATA[local Players = game:GetService("Players")
-
-local RaceJumpController = {}
-
-function RaceJumpController.Start()
-	local player = Players.LocalPlayer
-	local humanoid = nil
-
-	local function applyJumpState()
-		if not humanoid or not humanoid.Parent then
-			return
-		end
-
-		local isRace = player:GetAttribute("IsRace") == true
-		humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, not isRace)
-		if isRace then
-			humanoid.Jump = false
-		end
-	end
-
-	local function attachCharacter(character)
-		humanoid = character:WaitForChild("Humanoid")
-		applyJumpState()
-	end
-
-	player:GetAttributeChangedSignal("IsRace"):Connect(applyJumpState)
-	player.CharacterAdded:Connect(attachCharacter)
-	if player.Character then
-		task.spawn(attachCharacter, player.Character)
-	end
-end
-
-return RaceJumpController
-]]></string>
-          </Properties>
-        </Item>
-        <Item class="ModuleScript" referent="371">
+        <Item class="ModuleScript" referent="378">
           <Properties>
             <string name="Name">RaceResetController</string>
             <string name="Source"><![CDATA[local Players = game:GetService("Players")
@@ -67819,7 +68858,7 @@ return RaceResetController
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="372">
+        <Item class="ModuleScript" referent="379">
           <Properties>
             <string name="Name">RaceTimerController</string>
             <string name="Source"><![CDATA[local Players = game:GetService("Players")
@@ -67881,7 +68920,7 @@ return RaceTimerController
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="373">
+        <Item class="ModuleScript" referent="380">
           <Properties>
             <string name="Name">RaceTrackerController</string>
             <string name="Source"><![CDATA[local CollectionService = game:GetService("CollectionService")
@@ -68121,7 +69160,7 @@ return RaceTrackerController
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="374">
+        <Item class="ModuleScript" referent="381">
           <Properties>
             <string name="Name">SackArmPoseController</string>
             <string name="Source"><![CDATA[local Players = game:GetService("Players")
@@ -68206,7 +69245,7 @@ return SackArmPoseController
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="375">
+        <Item class="ModuleScript" referent="382">
           <Properties>
             <string name="Name">SkillNotificationController</string>
             <string name="Source"><![CDATA[local Players = game:GetService("Players")
@@ -68373,7 +69412,7 @@ return SkillNotificationController
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="376">
+        <Item class="ModuleScript" referent="383">
           <Properties>
             <string name="Name">SoundController</string>
             <string name="Source"><![CDATA[local ContentProvider = game:GetService("ContentProvider")
@@ -68705,7 +69744,7 @@ return SoundController
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="377">
+        <Item class="ModuleScript" referent="384">
           <Properties>
             <string name="Name">TrailShopController</string>
             <string name="Source"><![CDATA[local Players = game:GetService("Players")
@@ -68811,6 +69850,32 @@ local function getCardParts(card)
 	return preview, title, description, action
 end
 
+local function applyThumbnail(preview, thumbnail)
+	local oldThumbnail = preview:FindFirstChild("RuntimeThumbnail")
+	if oldThumbnail then
+		oldThumbnail:Destroy()
+	end
+	if not thumbnail then
+		return
+	end
+
+	local image = Instance.new("ImageLabel")
+	image.Name = "RuntimeThumbnail"
+	image.BackgroundTransparency = 1
+	image.Size = UDim2.fromScale(1, 1)
+	image.Image = thumbnail
+	image.ScaleType = Enum.ScaleType.Crop
+	image.ZIndex = preview.ZIndex + 1
+	image.Parent = preview
+
+	local previewCorner = preview:FindFirstChildOfClass("UICorner")
+	if previewCorner then
+		local corner = Instance.new("UICorner")
+		corner.CornerRadius = previewCorner.CornerRadius
+		corner.Parent = image
+	end
+end
+
 local function createCard(trail, layoutOrder)
 	local owned = player:GetAttribute(`OwnsTrail_{trail.id}`) == true
 	local equipped = player:GetAttribute("EquippedTrail") == trail.id
@@ -68834,6 +69899,7 @@ local function createCard(trail, layoutOrder)
 	if previewGradient then
 		previewGradient.Color = makeColorSequence(trail.colors)
 	end
+	applyThumbnail(preview, trail.thumbnail)
 
 	action.Active = not equipped
 	action.AutoButtonColor = not equipped
@@ -69001,12 +70067,12 @@ return TrailShopController
       </Item>
     </Item>
   </Item>
-  <Item class="Workspace" referent="378">
+  <Item class="Workspace" referent="385">
     <Properties>
       <string name="Name">Workspace</string>
       <bool name="NeedsPivotMigration">false</bool>
     </Properties>
-    <Item class="Folder" referent="379">
+    <Item class="Folder" referent="386">
       <Properties>
         <string name="Name">ActiveTrack</string>
       </Properties>

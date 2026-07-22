@@ -7,6 +7,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Packages = ReplicatedStorage.Packages
 local React = require(Packages.React)
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
+local NetworkTiming = require(ReplicatedStorage.Shared.NetworkTiming)
 
 local e = React.createElement
 
@@ -202,10 +203,21 @@ local function App(props)
 		local connection = props.reactionRemote.OnClientEvent:Connect(function(payload)
 			if payload.action == "show" then
 				local id = payload.id
+				local receivedAt = Workspace:GetServerTimeNow()
+				if
+					not NetworkTiming.shouldDisplayPrompt(
+						receivedAt,
+						payload.opensAt,
+						payload.duration,
+						GameConfig.networking.minimumLatePromptSeconds
+					)
+				then
+					return
+				end
 				reactionTokens.current[id] = (reactionTokens.current[id] or 0) + 1
 				local token = reactionTokens.current[id]
 				reactionPositions.current[id] = { x = payload.screenX, y = payload.screenY }
-				local delaySeconds = math.max(0, payload.opensAt - Workspace:GetServerTimeNow())
+				local delaySeconds = math.max(0, payload.opensAt - receivedAt)
 				task.delay(delaySeconds, function()
 					if reactionTokens.current[id] ~= token then
 						return

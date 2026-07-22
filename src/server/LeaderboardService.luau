@@ -8,11 +8,21 @@ local Workspace = game:GetService("Workspace")
 
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local LeaderboardFormat = require(ReplicatedStorage.Shared.LeaderboardFormat)
+local LeaderboardPolicy = require(ReplicatedStorage.Shared.LeaderboardPolicy)
 
 local LeaderboardService = {}
 LeaderboardService.__index = LeaderboardService
 
 local AVATAR_MODEL_PREFIX = "LeaderboardCharacter_"
+
+local function isExcludedUserId(userId)
+	return LeaderboardPolicy.isExcludedUserId(
+		userId,
+		GameConfig.leaderboard.excludedUserIds,
+		game.CreatorType == Enum.CreatorType.User,
+		game.CreatorId
+	)
+end
 
 local function getTaggedDescendant(root, tag)
 	for _, instance in CollectionService:GetTagged(tag) do
@@ -332,7 +342,7 @@ function LeaderboardService:_getPlayerValue(player, field, source)
 end
 
 function LeaderboardService:_syncPlayer(player, force)
-	if not self._persistenceEnabled then
+	if not self._persistenceEnabled or isExcludedUserId(player.UserId) then
 		return
 	end
 	local syncedStores = {}
@@ -385,6 +395,7 @@ function LeaderboardService:_readPersistent(boardState)
 		local userId = tonumber(entry.key)
 		if
 			userId
+			and not isExcludedUserId(userId)
 			and type(entry.value) == "number"
 			and entry.value >= GameConfig.leaderboard.minimumValue
 		then
@@ -421,6 +432,10 @@ end
 function LeaderboardService:_getEntries(boardState)
 	local values = self:_readPersistent(boardState)
 	for _, player in Players:GetPlayers() do
+		if isExcludedUserId(player.UserId) then
+			values[player.UserId] = nil
+			continue
+		end
 		local value = self:_getPlayerValue(player, boardState.field, boardState.source)
 		local mergedValue =
 			LeaderboardFormat.mergePlayerValue(boardState.field, values[player.UserId], value)
@@ -433,11 +448,13 @@ function LeaderboardService:_getEntries(boardState)
 	self:_resolveNames(values)
 	local entries = {}
 	for userId, value in values do
-		table.insert(entries, {
-			userId = userId,
-			username = self._nameCache[userId] or `User{userId}`,
-			value = value,
-		})
+		if not isExcludedUserId(userId) then
+			table.insert(entries, {
+				userId = userId,
+				username = self._nameCache[userId] or `User{userId}`,
+				value = value,
+			})
+		end
 	end
 	table.sort(entries, function(left, right)
 		if left.value ~= right.value then

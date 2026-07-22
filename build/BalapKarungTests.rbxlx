@@ -58326,6 +58326,7 @@ return table.freeze(CoinEconomy)
 		initialWriteDelaySeconds = 15,
 		minimumValue = 1,
 		maximumItems = 100,
+		excludedUserIds = { 9154250170 },
 		avatarAnimationId = "rbxassetid://507771019",
 	},
 	environmentVfx = {
@@ -58373,6 +58374,10 @@ return table.freeze(CoinEconomy)
 	},
 	movement = {
 		missRecoverySeconds = 0.65,
+		smoothCorrectionThresholdStuds = 1,
+		snapCorrectionThresholdStuds = 10,
+		smoothCorrectionRate = 3,
+		maximumExtrapolationSeconds = 0.5,
 	},
 	speed = {
 		normalValue = 32,
@@ -58430,7 +58435,8 @@ return table.freeze(CoinEconomy)
 		failedGuardPromptResumeSeconds = 0.75,
 		promptSuppressionPollSeconds = 0.05,
 		guardRaycastDistanceStuds = 16,
-		guardServerValidationDistanceStuds = 24,
+		guardBaseValidationDistanceStuds = 16,
+		guardMaxValidationDistanceStuds = 32,
 		guardServerFallbackStuds = 8,
 		guardCrashLeadStuds = 3,
 		characterCrashHitboxSize = Vector3.new(4, 5, 3.5),
@@ -58462,7 +58468,8 @@ return table.freeze(CoinEconomy)
 		promptPositionAttempts = 40,
 		impactRaycastDistanceStuds = 12,
 		failedImpactDistanceStuds = 3,
-		serverValidationDistanceStuds = 20,
+		baseValidationDistanceStuds = 12,
+		maxValidationDistanceStuds = 28,
 		serverFallbackStuds = 2,
 		minimumObstacleSpacingStuds = 20,
 		maximumObstacleSpacingStuds = 32,
@@ -58525,13 +58532,23 @@ return table.freeze(CoinEconomy)
 		perfectStartRatio = 0.7,
 		perfectEndRatio = 0.85,
 		scheduleLeadSeconds = 0.25,
-		maximumClockDifferenceSeconds = 1,
+		maximumClockDifferenceSeconds = 1.5,
 		minimumChainLength = 1,
 		maximumChainLength = 3,
 		minimumScreenX = 0.28,
 		maximumScreenX = 0.72,
 		minimumScreenY = 0.28,
 		maximumScreenY = 0.82,
+	},
+	networking = {
+		pingIntervalSeconds = 10,
+		initialOneWayLatencySeconds = 0.1,
+		pingSmoothingAlpha = 0.3,
+		maximumOneWayLatencySeconds = 0.5,
+		graceMultiplier = 0.6,
+		maximumGraceSeconds = 0.3,
+		minimumLeadSeconds = 0.05,
+		minimumLatePromptSeconds = 0.15,
 	},
 	animations = {
 		idle = "rbxassetid://92750155061995",
@@ -58774,6 +58791,22 @@ return table.freeze(GameConfig)
       </Item>
       <Item class="ModuleScript" referent="332">
         <Properties>
+          <string name="Name">ImpactFeedback</string>
+          <string name="Source"><![CDATA[local ImpactFeedback = {}
+
+function ImpactFeedback.shouldPlaySound(localUserId, soundUserId, alreadyPlayedLocally)
+	return alreadyPlayedLocally ~= true
+		and type(localUserId) == "number"
+		and type(soundUserId) == "number"
+		and localUserId == soundUserId
+end
+
+return table.freeze(ImpactFeedback)
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="333">
+        <Properties>
           <string name="Name">LavaWaveMechanic</string>
           <string name="Source"><![CDATA[local LavaWaveMechanic = {}
 
@@ -58858,7 +58891,7 @@ return LavaWaveMechanic
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="333">
+      <Item class="ModuleScript" referent="334">
         <Properties>
           <string name="Name">LeaderboardFormat</string>
           <string name="Source"><![CDATA[local LeaderboardFormat = {}
@@ -58931,7 +58964,98 @@ return table.freeze(LeaderboardFormat)
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="334">
+      <Item class="ModuleScript" referent="335">
+        <Properties>
+          <string name="Name">LeaderboardPolicy</string>
+          <string name="Source"><![CDATA[local LeaderboardPolicy = {}
+
+function LeaderboardPolicy.isExcludedUserId(
+	userId,
+	configuredUserIds,
+	isUserOwnedExperience,
+	creatorId
+)
+	local numericUserId = tonumber(userId)
+	if not numericUserId then
+		return false
+	end
+	if isUserOwnedExperience == true and numericUserId == tonumber(creatorId) then
+		return true
+	end
+	for _, configuredUserId in configuredUserIds or {} do
+		if numericUserId == tonumber(configuredUserId) then
+			return true
+		end
+	end
+	return false
+end
+
+return table.freeze(LeaderboardPolicy)
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="336">
+        <Properties>
+          <string name="Name">MovementPrediction</string>
+          <string name="Source"><![CDATA[local MovementPrediction = {}
+
+function MovementPrediction.advanceDistance(distance, speed, deltaTime, trackLength)
+	local currentDistance = math.max(0, tonumber(distance) or 0)
+	local forwardSpeed = math.max(0, tonumber(speed) or 0)
+	local elapsed = math.max(0, tonumber(deltaTime) or 0)
+	local maximumDistance = math.max(0, tonumber(trackLength) or 0)
+	return math.clamp(currentDistance + forwardSpeed * elapsed, 0, maximumDistance)
+end
+
+function MovementPrediction.extrapolateDistance(
+	distance,
+	speed,
+	updatedAt,
+	now,
+	maximumExtrapolation,
+	trackLength
+)
+	local elapsed = math.clamp(
+		(tonumber(now) or 0) - (tonumber(updatedAt) or 0),
+		0,
+		math.max(0, tonumber(maximumExtrapolation) or 0)
+	)
+	return MovementPrediction.advanceDistance(distance, speed, elapsed, trackLength)
+end
+
+function MovementPrediction.progressAt(position, startOrigin, forward, trackLength)
+	local maximumDistance = math.max(0, tonumber(trackLength) or 0)
+	if maximumDistance == 0 or forward.Magnitude < 0.001 then
+		return 0
+	end
+	return math.clamp((position - startOrigin):Dot(forward.Unit), 0, maximumDistance)
+end
+
+function MovementPrediction.reconciliationMode(
+	localDistance,
+	authoritativeDistance,
+	smoothThreshold,
+	snapThreshold
+)
+	local difference = authoritativeDistance - localDistance
+	local absoluteDifference = math.abs(difference)
+	if absoluteDifference > snapThreshold then
+		return "Snap", difference
+	elseif absoluteDifference > smoothThreshold then
+		return "Smooth", difference
+	end
+	return "None", difference
+end
+
+function MovementPrediction.smoothingAlpha(deltaTime, correctionRate)
+	return math.clamp(math.max(0, deltaTime) * math.max(0, correctionRate), 0, 1)
+end
+
+return table.freeze(MovementPrediction)
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="337">
         <Properties>
           <string name="Name">MusicCatalog</string>
           <string name="Source"><![CDATA[local MusicCatalog = {
@@ -58990,7 +59114,7 @@ return table.freeze(MusicCatalog)
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="335">
+      <Item class="ModuleScript" referent="338">
         <Properties>
           <string name="Name">MusicPlayerState</string>
           <string name="Source"><![CDATA[local MusicPlayerState = {}
@@ -59075,7 +59199,69 @@ return table.freeze(MusicPlayerState)
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="336">
+      <Item class="ModuleScript" referent="339">
+        <Properties>
+          <string name="Name">NetworkTiming</string>
+          <string name="Source"><![CDATA[local NetworkTiming = {}
+
+function NetworkTiming.smoothLatency(previousLatency, sampleLatency, alpha, maximumLatency)
+	local previous = math.clamp(tonumber(previousLatency) or 0, 0, maximumLatency)
+	local sample = math.clamp(tonumber(sampleLatency) or previous, 0, maximumLatency)
+	return previous * (1 - alpha) + sample * alpha
+end
+
+function NetworkTiming.leadSeconds(oneWayLatency, baseLeadSeconds, config)
+	local latency = math.clamp(
+		oneWayLatency or config.initialOneWayLatencySeconds,
+		0,
+		config.maximumOneWayLatencySeconds
+	)
+	return math.max(config.minimumLeadSeconds, baseLeadSeconds or 0, latency)
+end
+
+function NetworkTiming.graceSeconds(oneWayLatency, config)
+	local latency = math.clamp(
+		oneWayLatency or config.initialOneWayLatencySeconds,
+		0,
+		config.maximumOneWayLatencySeconds
+	)
+	return math.min(latency * config.graceMultiplier, config.maximumGraceSeconds)
+end
+
+function NetworkTiming.validationDistance(oneWayLatency, effectiveSpeed, baseDistance, maxDistance)
+	local latency = math.max(0, tonumber(oneWayLatency) or 0)
+	local speed = math.max(0, tonumber(effectiveSpeed) or 0)
+	local minimum = math.max(0, tonumber(baseDistance) or 0)
+	local maximum = math.max(minimum, tonumber(maxDistance) or minimum)
+	return math.min(minimum + speed * latency, maximum)
+end
+
+function NetworkTiming.resolveAt(closesAt, graceSeconds)
+	return closesAt + math.max(0, graceSeconds or 0)
+end
+
+function NetworkTiming.isTimestampPlausible(serverNow, clientTimestamp, maximumDifference)
+	return type(clientTimestamp) == "number"
+		and math.abs(serverNow - clientTimestamp) <= maximumDifference
+end
+
+function NetworkTiming.reactionSeconds(event, clientPressedAt)
+	local grace = event.graceSeconds or 0
+	if clientPressedAt < event.opensAt - grace or clientPressedAt > event.closesAt then
+		return nil
+	end
+	return math.max(0, clientPressedAt - event.opensAt)
+end
+
+function NetworkTiming.shouldDisplayPrompt(receivedAt, opensAt, duration, minimumRemaining)
+	return opensAt + duration - receivedAt >= minimumRemaining
+end
+
+return table.freeze(NetworkTiming)
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="340">
         <Properties>
           <string name="Name">ObstacleMechanic</string>
           <string name="Source"><![CDATA[local ObstacleMechanic = {}
@@ -59143,7 +59329,7 @@ return table.freeze(ObstacleMechanic)
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="337">
+      <Item class="ModuleScript" referent="341">
         <Properties>
           <string name="Name">PlayerData</string>
           <string name="Source"><![CDATA[local PlayerData = {}
@@ -59230,7 +59416,7 @@ return PlayerData
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="338">
+      <Item class="ModuleScript" referent="342">
         <Properties>
           <string name="Name">Reaction</string>
           <string name="Source"><![CDATA[local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -59263,7 +59449,7 @@ return table.freeze(Reaction)
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="339">
+      <Item class="ModuleScript" referent="343">
         <Properties>
           <string name="Name">SackSizing</string>
           <string name="Source"><![CDATA[local SackSizing = {}
@@ -59281,7 +59467,7 @@ return SackSizing
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="340">
+      <Item class="ModuleScript" referent="344">
         <Properties>
           <string name="Name">Speed</string>
           <string name="Source"><![CDATA[local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -59330,7 +59516,7 @@ return table.freeze(Speed)
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="341">
+      <Item class="ModuleScript" referent="345">
         <Properties>
           <string name="Name">TrailCatalog</string>
           <string name="Source"><![CDATA[local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -59467,22 +59653,22 @@ return TrailCatalog
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Folder" referent="342">
+      <Item class="Folder" referent="346">
         <Properties>
           <string name="Name">Trails</string>
         </Properties>
       </Item>
     </Item>
   </Item>
-  <Item class="ServerScriptService" referent="343">
+  <Item class="ServerScriptService" referent="347">
     <Properties>
       <string name="Name">ServerScriptService</string>
     </Properties>
-    <Item class="Folder" referent="344">
+    <Item class="Folder" referent="348">
       <Properties>
         <string name="Name">Tests</string>
       </Properties>
-      <Item class="ModuleScript" referent="345">
+      <Item class="ModuleScript" referent="349">
         <Properties>
           <string name="Name">CoinEconomy.spec</string>
           <string name="Source"><![CDATA[return function()
@@ -59507,7 +59693,7 @@ end
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="346">
+      <Item class="ModuleScript" referent="350">
         <Properties>
           <string name="Name">GameConfig.spec</string>
           <string name="Source"><![CDATA[return function()
@@ -59544,6 +59730,7 @@ end
 			expect(GameConfig.leaderboard.writeIntervalSeconds >= 60).to.equal(true)
 			expect(GameConfig.leaderboard.initialWriteDelaySeconds >= 10).to.equal(true)
 			expect(GameConfig.leaderboard.minimumValue).to.equal(1)
+			expect(#GameConfig.leaderboard.excludedUserIds > 0).to.equal(true)
 		end)
 
 		it("configures lightweight client leaf ambience", function()
@@ -59591,6 +59778,16 @@ end
 					< GameConfig.reactionWindow.perfectEndRatio
 			).to.equal(true)
 			expect(GameConfig.reactionWindow.perfectEndRatio < 1).to.equal(true)
+		end)
+
+		it("caps latency compensation without trusting client duration", function()
+			local networking = GameConfig.networking
+			expect(networking.pingIntervalSeconds > 0).to.equal(true)
+			expect(networking.maximumOneWayLatencySeconds <= 0.5).to.equal(true)
+			expect(networking.maximumGraceSeconds <= networking.maximumOneWayLatencySeconds).to.equal(
+				true
+			)
+			expect(GameConfig.reactionWindow.maximumClockDifferenceSeconds >= 1).to.equal(true)
 		end)
 
 		it("makes every progress stage faster", function()
@@ -59641,7 +59838,11 @@ end
 
 		it("configures a physical guard impact", function()
 			expect(GameConfig.obstacle.guardRaycastDistanceStuds > 0).to.equal(true)
-			expect(GameConfig.obstacle.guardServerValidationDistanceStuds > 0).to.equal(true)
+			expect(GameConfig.obstacle.guardBaseValidationDistanceStuds > 0).to.equal(true)
+			expect(
+				GameConfig.obstacle.guardMaxValidationDistanceStuds
+					> GameConfig.obstacle.guardBaseValidationDistanceStuds
+			).to.equal(true)
 			expect(GameConfig.obstacle.guardCrashLeadStuds > 0).to.equal(true)
 			expect(GameConfig.obstacle.characterCrashHitboxSize.Magnitude > 0).to.equal(true)
 			expect(GameConfig.obstacle.guardThrowHorizontalSpeed > 0).to.equal(true)
@@ -59659,7 +59860,11 @@ end
 				GameConfig.breaker.minimumObstacleSpacingStuds
 					< GameConfig.breaker.maximumObstacleSpacingStuds
 			).to.equal(true)
-			expect(GameConfig.breaker.serverValidationDistanceStuds > 0).to.equal(true)
+			expect(GameConfig.breaker.baseValidationDistanceStuds > 0).to.equal(true)
+			expect(
+				GameConfig.breaker.maxValidationDistanceStuds
+					> GameConfig.breaker.baseValidationDistanceStuds
+			).to.equal(true)
 			expect(GameConfig.breaker.debrisSpreadRandomness > 0).to.equal(true)
 			expect(GameConfig.sounds.breakerImpact.soundId ~= "").to.equal(true)
 		end)
@@ -59751,6 +59956,16 @@ end
 			expect(GameConfig.movement.missRecoverySeconds).to.equal(0.65)
 		end)
 
+		it("bounds client movement reconciliation", function()
+			expect(GameConfig.movement.smoothCorrectionThresholdStuds > 0).to.equal(true)
+			expect(
+				GameConfig.movement.snapCorrectionThresholdStuds
+					> GameConfig.movement.smoothCorrectionThresholdStuds
+			).to.equal(true)
+			expect(GameConfig.movement.smoothCorrectionRate > 0).to.equal(true)
+			expect(GameConfig.movement.maximumExtrapolationSeconds > 0).to.equal(true)
+		end)
+
 		it("provides all core sound config slots", function()
 			for _, soundName in { "hop", "good", "perfect", "miss" } do
 				expect(GameConfig.sounds[soundName] ~= nil).to.equal(true)
@@ -59835,7 +60050,28 @@ end
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="347">
+      <Item class="ModuleScript" referent="351">
+        <Properties>
+          <string name="Name">ImpactFeedback.spec</string>
+          <string name="Source"><![CDATA[return function()
+	local ReplicatedStorage = game:GetService("ReplicatedStorage")
+	local ImpactFeedback = require(ReplicatedStorage.Shared.ImpactFeedback)
+
+	describe("ImpactFeedback", function()
+		it("plays impact audio only for the owning client", function()
+			expect(ImpactFeedback.shouldPlaySound(10, 10, false)).to.equal(true)
+			expect(ImpactFeedback.shouldPlaySound(11, 10, false)).to.equal(false)
+		end)
+
+		it("does not replay audio after local prediction", function()
+			expect(ImpactFeedback.shouldPlaySound(10, 10, true)).to.equal(false)
+		end)
+	end)
+end
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="352">
         <Properties>
           <string name="Name">LavaWaveMechanic.spec</string>
           <string name="Source"><![CDATA[return function()
@@ -59867,7 +60103,7 @@ end
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="348">
+      <Item class="ModuleScript" referent="353">
         <Properties>
           <string name="Name">LeaderboardFormat.spec</string>
           <string name="Source"><![CDATA[return function()
@@ -59904,7 +60140,81 @@ end
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="349">
+      <Item class="ModuleScript" referent="354">
+        <Properties>
+          <string name="Name">LeaderboardPolicy.spec</string>
+          <string name="Source"><![CDATA[return function()
+	local ReplicatedStorage = game:GetService("ReplicatedStorage")
+	local LeaderboardPolicy = require(ReplicatedStorage.Shared.LeaderboardPolicy)
+
+	describe("LeaderboardPolicy", function()
+		it("excludes explicitly configured owners", function()
+			expect(LeaderboardPolicy.isExcludedUserId(9154250170, { 9154250170 }, false, 0)).to.equal(
+				true
+			)
+			expect(LeaderboardPolicy.isExcludedUserId(123, { 9154250170 }, false, 0)).to.equal(
+				false
+			)
+		end)
+
+		it("automatically excludes the creator of user-owned experiences", function()
+			expect(LeaderboardPolicy.isExcludedUserId(55, {}, true, 55)).to.equal(true)
+			expect(LeaderboardPolicy.isExcludedUserId(56, {}, true, 55)).to.equal(false)
+		end)
+	end)
+end
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="355">
+        <Properties>
+          <string name="Name">MovementPrediction.spec</string>
+          <string name="Source"><![CDATA[return function()
+	local ReplicatedStorage = game:GetService("ReplicatedStorage")
+	local MovementPrediction = require(ReplicatedStorage.Shared.MovementPrediction)
+
+	describe("MovementPrediction", function()
+		it("advances and clamps authoritative distance", function()
+			expect(MovementPrediction.advanceDistance(10, 32, 0.5, 100)).to.equal(26)
+			expect(MovementPrediction.advanceDistance(90, 32, 0.5, 100)).to.equal(100)
+		end)
+
+		it("does not advance while movement is paused", function()
+			expect(MovementPrediction.advanceDistance(25, 0, 3, 100)).to.equal(25)
+		end)
+
+		it("extrapolates a stale server snapshot with a hard time cap", function()
+			expect(MovementPrediction.extrapolateDistance(10, 32, 5, 5.25, 0.5, 100)).to.equal(18)
+			expect(MovementPrediction.extrapolateDistance(10, 32, 5, 7, 0.5, 100)).to.equal(26)
+		end)
+
+		it("projects physical position onto the lane", function()
+			local progress = MovementPrediction.progressAt(
+				Vector3.new(8, 20, -30),
+				Vector3.new(8, 0, 10),
+				Vector3.new(0, 0, -1),
+				100
+			)
+			expect(progress).to.equal(40)
+		end)
+
+		it("selects bounded reconciliation modes", function()
+			expect(MovementPrediction.reconciliationMode(10, 10.5, 1, 10)).to.equal("None")
+			expect(MovementPrediction.reconciliationMode(10, 12, 1, 10)).to.equal("Smooth")
+			expect(MovementPrediction.reconciliationMode(10, 21, 1, 10)).to.equal("Snap")
+		end)
+
+		it("caps smoothing alpha", function()
+			local alpha = MovementPrediction.smoothingAlpha(0.1, 3)
+			expect(alpha > 0.29 and alpha < 0.31).to.equal(true)
+			expect(MovementPrediction.smoothingAlpha(1, 3)).to.equal(1)
+		end)
+	end)
+end
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="356">
         <Properties>
           <string name="Name">MusicCatalog.spec</string>
           <string name="Source"><![CDATA[return function()
@@ -59928,7 +60238,7 @@ end
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="350">
+      <Item class="ModuleScript" referent="357">
         <Properties>
           <string name="Name">MusicPlayerState.spec</string>
           <string name="Source"><![CDATA[return function()
@@ -59971,7 +60281,74 @@ end
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="351">
+      <Item class="ModuleScript" referent="358">
+        <Properties>
+          <string name="Name">NetworkTiming.spec</string>
+          <string name="Source"><![CDATA[return function()
+	local ReplicatedStorage = game:GetService("ReplicatedStorage")
+	local NetworkTiming = require(ReplicatedStorage.Shared.NetworkTiming)
+
+	local config = {
+		initialOneWayLatencySeconds = 0.1,
+		maximumOneWayLatencySeconds = 0.5,
+		minimumLeadSeconds = 0.05,
+		graceMultiplier = 0.6,
+		maximumGraceSeconds = 0.3,
+	}
+
+	describe("NetworkTiming", function()
+		it("uses latency as lead without lowering a gameplay lead", function()
+			expect(NetworkTiming.leadSeconds(0.2, 0, config)).to.equal(0.2)
+			expect(NetworkTiming.leadSeconds(0.1, 0.25, config)).to.equal(0.25)
+		end)
+
+		it("caps smoothed latency and grace", function()
+			expect(NetworkTiming.smoothLatency(0.1, 2, 1, 0.5)).to.equal(0.5)
+			expect(NetworkTiming.graceSeconds(1, config)).to.equal(0.3)
+		end)
+
+		it("expands physical validation by speed and latency with a hard cap", function()
+			expect(NetworkTiming.validationDistance(0.1, 40, 16, 32)).to.equal(20)
+			expect(NetworkTiming.validationDistance(1, 100, 16, 32)).to.equal(32)
+		end)
+
+		it("accepts an on-time press that arrives during server grace", function()
+			local event = {
+				opensAt = 10,
+				closesAt = 11,
+				graceSeconds = 0.2,
+			}
+			expect(NetworkTiming.resolveAt(event.closesAt, event.graceSeconds)).to.equal(11.2)
+			expect(NetworkTiming.reactionSeconds(event, 10.75)).to.equal(0.75)
+			expect(NetworkTiming.reactionSeconds(event, 11.01)).to.equal(nil)
+		end)
+
+		it("clamps a slightly early synchronized timestamp", function()
+			local event = {
+				opensAt = 10,
+				closesAt = 11,
+				graceSeconds = 0.1,
+			}
+			expect(NetworkTiming.reactionSeconds(event, 9.95)).to.equal(0)
+			expect(NetworkTiming.reactionSeconds(event, 9.8)).to.equal(nil)
+		end)
+
+		it("rejects implausible client clocks", function()
+			expect(NetworkTiming.isTimestampPlausible(20, 19.5, 1.5)).to.equal(true)
+			expect(NetworkTiming.isTimestampPlausible(20, 18, 1.5)).to.equal(false)
+			expect(NetworkTiming.isTimestampPlausible(20, "20", 1.5)).to.equal(false)
+		end)
+
+		it("does not display a prompt that arrived too late", function()
+			expect(NetworkTiming.shouldDisplayPrompt(10.85, 10, 1, 0.15)).to.equal(true)
+			expect(NetworkTiming.shouldDisplayPrompt(10.86, 10, 1, 0.15)).to.equal(false)
+		end)
+	end)
+end
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="359">
         <Properties>
           <string name="Name">ObstacleMechanic.spec</string>
           <string name="Source"><![CDATA[return function()
@@ -60034,7 +60411,7 @@ end
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="352">
+      <Item class="ModuleScript" referent="360">
         <Properties>
           <string name="Name">PlayerData.spec</string>
           <string name="Source"><![CDATA[return function()
@@ -60131,7 +60508,7 @@ end
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="353">
+      <Item class="ModuleScript" referent="361">
         <Properties>
           <string name="Name">Reaction.spec</string>
           <string name="Source"><![CDATA[return function()
@@ -60166,7 +60543,7 @@ end
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="354">
+      <Item class="ModuleScript" referent="362">
         <Properties>
           <string name="Name">SackSizing.spec</string>
           <string name="Source"><![CDATA[return function()
@@ -60201,7 +60578,7 @@ end
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="355">
+      <Item class="ModuleScript" referent="363">
         <Properties>
           <string name="Name">Speed.spec</string>
           <string name="Source"><![CDATA[return function()
@@ -60257,7 +60634,7 @@ end
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="356">
+      <Item class="ModuleScript" referent="364">
         <Properties>
           <string name="Name">TrailCatalog.spec</string>
           <string name="Source"><![CDATA[return function()

@@ -8,6 +8,8 @@ local Workspace = game:GetService("Workspace")
 
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local LavaWaveMechanic = require(ReplicatedStorage.Shared.LavaWaveMechanic)
+local MovementPrediction = require(ReplicatedStorage.Shared.MovementPrediction)
+local NetworkTiming = require(ReplicatedStorage.Shared.NetworkTiming)
 local ObstacleMechanic = require(ReplicatedStorage.Shared.ObstacleMechanic)
 local Reaction = require(ReplicatedStorage.Shared.Reaction)
 local Speed = require(ReplicatedStorage.Shared.Speed)
@@ -20,16 +22,6 @@ local ON_FIRE_AURA_ATTRIBUTE = "BalapKarungOnfireAura"
 
 local RaceService = {}
 RaceService.__index = RaceService
-
-local function isCharacterInsideFinish(character, finish)
-	local overlapParams = OverlapParams.new()
-	overlapParams.FilterType = Enum.RaycastFilterType.Include
-	overlapParams.FilterDescendantsInstances = { character }
-	overlapParams.MaxParts = 1
-
-	local forgivingSize = finish.Size + Vector3.new(1, 6, 1)
-	return #Workspace:GetPartBoundsInBox(finish.CFrame, forgivingSize, overlapParams) > 0
-end
 
 local function setPlayerDefaults(player)
 	player:SetAttribute("Speed", GameConfig.speed.normalValue)
@@ -64,6 +56,23 @@ local function setPlayerDefaults(player)
 	player:SetAttribute("LavaWavesHit", 0)
 	player:SetAttribute("RaceValidInputs", 0)
 	player:SetAttribute("LastCoinReward", 0)
+	player:SetAttribute("NetworkPingMs", 0)
+	player:SetAttribute("LastPromptSentAt", 0)
+	player:SetAttribute("LastPromptOpensAt", 0)
+	player:SetAttribute("LastPromptId", 0)
+	player:SetAttribute("LastPromptType", "")
+	player:SetAttribute("LastReactionReceivedAt", 0)
+	player:SetAttribute("LastReactionPressedAt", 0)
+	player:SetAttribute("LastReactionEventId", 0)
+	player:SetAttribute("LastImpactReceivedAt", 0)
+	player:SetAttribute("LastImpactDetectedAt", 0)
+	player:SetAttribute("LastImpactValidationDistance", 0)
+	player:SetAttribute("RaceId", 0)
+	player:SetAttribute("RaceForward", Vector3.zero)
+	player:SetAttribute("RaceStartOrigin", Vector3.zero)
+	player:SetAttribute("TrackLength", 0)
+	player:SetAttribute("AuthoritativeDistance", 0)
+	player:SetAttribute("AuthoritativeUpdatedAt", 0)
 end
 
 local function isPointInsidePart(part, point)
@@ -423,6 +432,9 @@ local function restoreLobbyCharacter(player, character)
 		root.Anchored = false
 		root.AssemblyLinearVelocity = Vector3.zero
 		root.AssemblyAngularVelocity = Vector3.zero
+		pcall(function()
+			root:SetNetworkOwnershipAuto()
+		end)
 	end
 end
 
@@ -623,6 +635,76 @@ function RaceService:_setState(state, countdown)
 	Workspace:SetAttribute("Countdown", countdown or 0)
 end
 
+function RaceService:_refreshNetworkTiming(racer, now, force)
+	if not force and now - racer.lastPingSampleAt < GameConfig.networking.pingIntervalSeconds then
+		return
+	end
+	racer.lastPingSampleAt = now
+	local success, sample = pcall(function()
+		return racer.player:GetNetworkPing()
+	end)
+	if
+		not success
+		or type(sample) ~= "number"
+		or sample ~= sample
+		or sample < 0
+		or sample == math.huge
+	then
+		return
+	end
+	racer.smoothOneWayLatency = NetworkTiming.smoothLatency(
+		racer.smoothOneWayLatency,
+		sample,
+		GameConfig.networking.pingSmoothingAlpha,
+		GameConfig.networking.maximumOneWayLatencySeconds
+	)
+	racer.player:SetAttribute("NetworkPingMs", math.round(racer.smoothOneWayLatency * 1000))
+end
+
+function RaceService:_playerLeadSeconds(racer, baseLeadSeconds)
+	return NetworkTiming.leadSeconds(
+		racer.smoothOneWayLatency,
+		baseLeadSeconds,
+		GameConfig.networking
+	)
+end
+
+function RaceService:_playerGraceSeconds(racer)
+	return NetworkTiming.graceSeconds(racer.smoothOneWayLatency, GameConfig.networking)
+end
+
+function RaceService:_validationDistance(racer, baseDistance, maximumDistance)
+	local latency = math.min(
+		racer.smoothOneWayLatency or GameConfig.networking.initialOneWayLatencySeconds,
+		GameConfig.networking.maximumOneWayLatencySeconds
+	)
+	return NetworkTiming.validationDistance(
+		latency,
+		racer.speed * racer.speedMultiplier,
+		baseDistance,
+		maximumDistance
+	)
+end
+
+function RaceService:_stampPrompt(racer, event, promptType, sentAt)
+	event.promptType = promptType
+	event.sentAt = sentAt
+	event.graceSeconds = self:_playerGraceSeconds(racer)
+	event.resolveAt = NetworkTiming.resolveAt(event.closesAt, event.graceSeconds)
+	racer.player:SetAttribute("LastPromptSentAt", sentAt)
+	racer.player:SetAttribute("LastPromptOpensAt", event.opensAt)
+	racer.player:SetAttribute("LastPromptId", event.id)
+	racer.player:SetAttribute("LastPromptType", promptType)
+end
+
+function RaceService:_isClientTimestampPlausible(racer, serverNow, clientTimestamp)
+	return NetworkTiming.isTimestampPlausible(
+		serverNow,
+		clientTimestamp,
+		GameConfig.reactionWindow.maximumClockDifferenceSeconds + self:_playerGraceSeconds(racer)
+	)
+end
+
 function RaceService:_configureCharacter(player, character)
 	local humanoid = character:FindFirstChildOfClass("Humanoid")
 	local root = character:FindFirstChild("HumanoidRootPart")
@@ -642,7 +724,7 @@ function RaceService:_configureCharacter(player, character)
 	end
 
 	pcall(function()
-		root:SetNetworkOwner(nil)
+		root:SetNetworkOwner(player)
 	end)
 
 	return humanoid, root
@@ -752,6 +834,12 @@ function RaceService:_prepareRace(eligiblePlayers)
 		player:SetAttribute("RaceProgress", 0)
 		player:SetAttribute("RaceStatus", "Countdown")
 		player:SetAttribute("LaneIndex", lane.index)
+		player:SetAttribute("RaceId", self._raceId)
+		player:SetAttribute("RaceForward", lane.forward)
+		player:SetAttribute("RaceStartOrigin", spawn.Position)
+		player:SetAttribute("TrackLength", lane.length)
+		player:SetAttribute("AuthoritativeDistance", 0)
+		player:SetAttribute("AuthoritativeUpdatedAt", 0)
 
 		self._racers[player] = {
 			player = player,
@@ -769,6 +857,10 @@ function RaceService:_prepareRace(eligiblePlayers)
 			speedMultiplier = 1,
 			boostEndsAt = 0,
 			lastReplicationAt = 0,
+			authoritativeDistance = 0,
+			lastTickAt = 0,
+			lastPingSampleAt = -math.huge,
+			smoothOneWayLatency = GameConfig.networking.initialOneWayLatencySeconds,
 			finished = false,
 			recoveringUntil = 0,
 			nextNormalPromptAt = 0,
@@ -932,15 +1024,17 @@ function RaceService:_startLavaPrompt(racer, wave, waveState, now)
 	end
 
 	self._eventId += 1
+	local networkLead = self:_playerLeadSeconds(racer, 0)
 	local event = {
 		id = self._eventId,
-		opensAt = now,
-		closesAt = now + wave.reactionDuration,
+		opensAt = now + networkLead,
+		closesAt = now + networkLead + wave.reactionDuration,
 		duration = wave.reactionDuration,
 		resolved = false,
 		waveState = waveState,
 		waveId = wave.id,
 	}
+	self:_stampPrompt(racer, event, "Lava", now)
 	waveState.prompted = true
 	waveState.event = event
 	racer.lavaReaction = event
@@ -1035,7 +1129,9 @@ function RaceService:_updateLavaWaves(now)
 				wave.racers[racer.player] = waveState
 			end
 
-			local racerDistance = (racer.root.Position - self._lavaGeometry.origin):Dot(
+			local racerPosition = racer.startOrigin
+				+ racer.forward * (racer.authoritativeDistance or 0)
+			local racerDistance = (racerPosition - self._lavaGeometry.origin):Dot(
 				self._lavaGeometry.direction
 			)
 			if
@@ -1049,13 +1145,15 @@ function RaceService:_updateLavaWaves(now)
 					wave.speed,
 					racer.speed * racer.speedMultiplier
 				)
-				if timeToImpact <= wave.promptLeadSeconds then
+				local networkBuffer = self:_playerLeadSeconds(racer, 0)
+					+ self:_playerGraceSeconds(racer)
+				if timeToImpact <= wave.promptLeadSeconds + networkBuffer then
 					self:_startLavaPrompt(racer, wave, waveState, now)
 				end
 			end
 
 			local event = waveState.event
-			if event and not event.resolved and now >= event.closesAt then
+			if event and not event.resolved and now >= (event.resolveAt or event.closesAt) then
 				event.resolved = true
 				if racer.lavaReaction == event then
 					racer.lavaReaction = nil
@@ -1272,6 +1370,7 @@ function RaceService:_triggerObstacleCrash(racer, obstacle, initiatorUserId)
 			barrier = barrier,
 			obstacleId = obstacle.id,
 			initiatorUserId = initiatorUserId or 0,
+			soundUserId = racer.player.UserId,
 			throwDirection = obstacle.throwDirection,
 			forward = racer.forward,
 		})
@@ -1299,22 +1398,28 @@ function RaceService:_submitObstacleCrash(player, barrier, clientDetectedAt)
 	then
 		return
 	end
-	if
-		math.abs(Workspace:GetServerTimeNow() - clientDetectedAt)
-		> GameConfig.reactionWindow.maximumClockDifferenceSeconds
-	then
+	local serverNow = Workspace:GetServerTimeNow()
+	if not self:_isClientTimestampPlausible(racer, serverNow, clientDetectedAt) then
 		return
 	end
+	racer.player:SetAttribute("LastImpactReceivedAt", serverNow)
+	racer.player:SetAttribute("LastImpactDetectedAt", clientDetectedAt)
 
 	local obstacle = racer.activeObstacle
 	if not obstacle or not obstacle.failed or obstacle.crashed or obstacle.barrier ~= barrier then
 		return
 	end
 
-	local progress = (racer.root.Position - racer.startOrigin):Dot(racer.forward)
+	local progress = racer.authoritativeDistance or 0
 	local distanceToBarrier = obstacle.barrierProgress - progress
+	local validationDistance = self:_validationDistance(
+		racer,
+		GameConfig.obstacle.guardBaseValidationDistanceStuds,
+		GameConfig.obstacle.guardMaxValidationDistanceStuds
+	)
+	racer.player:SetAttribute("LastImpactValidationDistance", validationDistance)
 	if
-		distanceToBarrier > GameConfig.obstacle.guardServerValidationDistanceStuds
+		distanceToBarrier > validationDistance
 		or distanceToBarrier < -GameConfig.obstacle.guardServerFallbackStuds
 	then
 		return
@@ -1365,7 +1470,8 @@ function RaceService:_startObstacleSequence(racer, obstacle)
 		resolvedCount = 0,
 	}
 	racer.obstacleSequence = sequence
-	local startsAt = Workspace:GetServerTimeNow()
+	local sentAt = Workspace:GetServerTimeNow()
+	local startsAt = sentAt + self:_playerLeadSeconds(racer, 0)
 	local random = Random.new(racer.player.UserId + self._raceId * 1009 + self._eventId)
 	local positions = ObstacleMechanic.generatePromptPositions(random, obstacle.tapCount, {
 		minimumX = GameConfig.reactionWindow.minimumScreenX,
@@ -1386,6 +1492,7 @@ function RaceService:_startObstacleSequence(racer, obstacle)
 			sequence = sequence,
 			sequenceIndex = sequenceIndex,
 		}
+		self:_stampPrompt(racer, event, "Obstacle", sentAt)
 		racer.obstacleReactions[event.id] = event
 		local position = positions[sequenceIndex]
 		self._reactionWindowRemote:FireClient(racer.player, {
@@ -1406,7 +1513,7 @@ function RaceService:_startObstacleSequence(racer, obstacle)
 				self._state == "Racing"
 				and not racer.finished
 				and not event.resolved
-				and Workspace:GetServerTimeNow() <= event.closesAt
+				and Workspace:GetServerTimeNow() <= event.resolveAt
 			do
 				task.wait()
 			end
@@ -1435,6 +1542,7 @@ function RaceService:_triggerGuardImpact(racer, obstacle, initiatorUserId)
 			barrier = barrier,
 			obstacleId = obstacle.id,
 			initiatorUserId = initiatorUserId,
+			soundUserId = racer.player.UserId,
 			throwDirection = obstacle.throwDirection,
 			forward = racer.forward,
 		})
@@ -1459,12 +1567,12 @@ function RaceService:_submitGuardImpact(player, barrier, clientDetectedAt)
 	then
 		return
 	end
-	if
-		math.abs(Workspace:GetServerTimeNow() - clientDetectedAt)
-		> GameConfig.reactionWindow.maximumClockDifferenceSeconds
-	then
+	local serverNow = Workspace:GetServerTimeNow()
+	if not self:_isClientTimestampPlausible(racer, serverNow, clientDetectedAt) then
 		return
 	end
+	racer.player:SetAttribute("LastImpactReceivedAt", serverNow)
+	racer.player:SetAttribute("LastImpactDetectedAt", clientDetectedAt)
 
 	local obstacle = racer.activeObstacle
 	if
@@ -1476,10 +1584,16 @@ function RaceService:_submitGuardImpact(player, barrier, clientDetectedAt)
 		return
 	end
 
-	local progress = (racer.root.Position - racer.startOrigin):Dot(racer.forward)
+	local progress = racer.authoritativeDistance or 0
 	local distanceToBarrier = obstacle.barrierProgress - progress
+	local validationDistance = self:_validationDistance(
+		racer,
+		GameConfig.obstacle.guardBaseValidationDistanceStuds,
+		GameConfig.obstacle.guardMaxValidationDistanceStuds
+	)
+	racer.player:SetAttribute("LastImpactValidationDistance", validationDistance)
 	if
-		distanceToBarrier > GameConfig.obstacle.guardServerValidationDistanceStuds
+		distanceToBarrier > validationDistance
 		or distanceToBarrier < -GameConfig.obstacle.guardServerFallbackStuds
 	then
 		return
@@ -1588,6 +1702,7 @@ function RaceService:_startBreakerPrompt(racer, zone, obstacle)
 	obstacle.promptStarted = true
 	self._eventId += 1
 	local now = Workspace:GetServerTimeNow()
+	local networkLead = self:_playerLeadSeconds(racer, 0)
 	local random =
 		Random.new(racer.player.UserId + self._raceId * 2027 + math.floor(obstacle.progress * 10))
 	local positions = ObstacleMechanic.generatePromptPositions(random, 1, {
@@ -1598,13 +1713,14 @@ function RaceService:_startBreakerPrompt(racer, zone, obstacle)
 	}, GameConfig.breaker.promptMinimumDistance, GameConfig.breaker.promptPositionAttempts)
 	local event = {
 		id = self._eventId,
-		opensAt = now,
-		closesAt = now + GameConfig.breaker.reactionDurationSeconds,
+		opensAt = now + networkLead,
+		closesAt = now + networkLead + GameConfig.breaker.reactionDurationSeconds,
 		duration = GameConfig.breaker.reactionDurationSeconds,
 		resolved = false,
 		zone = zone,
 		obstacle = obstacle,
 	}
+	self:_stampPrompt(racer, event, "Breaker", now)
 	obstacle.event = event
 	racer.breakerReactions[event.id] = event
 	local position = positions[1]
@@ -1628,7 +1744,7 @@ function RaceService:_startBreakerPrompt(racer, zone, obstacle)
 			and not racer.finished
 			and racer.activeBreakerZone == zone
 			and not event.resolved
-			and Workspace:GetServerTimeNow() <= event.closesAt
+			and Workspace:GetServerTimeNow() <= event.resolveAt
 		do
 			task.wait()
 		end
@@ -1653,6 +1769,7 @@ function RaceService:_triggerBreakerImpact(racer, obstacle, initiatorUserId)
 		impactPart = obstacle.impactPart,
 		obstacleId = obstacle.id,
 		initiatorUserId = initiatorUserId or 0,
+		soundUserId = racer.player.UserId,
 		success = success,
 		throwDirection = obstacle.throwDirection,
 		forward = racer.forward,
@@ -1676,12 +1793,12 @@ function RaceService:_submitBreakerImpact(player, impactPart, clientDetectedAt)
 	then
 		return
 	end
-	if
-		math.abs(Workspace:GetServerTimeNow() - clientDetectedAt)
-		> GameConfig.reactionWindow.maximumClockDifferenceSeconds
-	then
+	local serverNow = Workspace:GetServerTimeNow()
+	if not self:_isClientTimestampPlausible(racer, serverNow, clientDetectedAt) then
 		return
 	end
+	racer.player:SetAttribute("LastImpactReceivedAt", serverNow)
+	racer.player:SetAttribute("LastImpactDetectedAt", clientDetectedAt)
 
 	local obstacle = nil
 	for _, candidate in racer.activeBreakerZone.obstacles do
@@ -1694,10 +1811,16 @@ function RaceService:_submitBreakerImpact(player, impactPart, clientDetectedAt)
 		return
 	end
 
-	local progress = (racer.root.Position - racer.startOrigin):Dot(racer.forward)
+	local progress = racer.authoritativeDistance or 0
 	local distanceToImpact = obstacle.progress - progress
+	local validationDistance = self:_validationDistance(
+		racer,
+		GameConfig.breaker.baseValidationDistanceStuds,
+		GameConfig.breaker.maxValidationDistanceStuds
+	)
+	racer.player:SetAttribute("LastImpactValidationDistance", validationDistance)
 	if
-		distanceToImpact > GameConfig.breaker.serverValidationDistanceStuds
+		distanceToImpact > validationDistance
 		or distanceToImpact < -GameConfig.breaker.serverFallbackStuds
 	then
 		return
@@ -1733,12 +1856,15 @@ function RaceService:_updateBreakerZone(racer, progress)
 	end
 
 	local effectiveSpeed = math.max(racer.speed * racer.speedMultiplier, 0.001)
+	local promptLeadSeconds = GameConfig.breaker.promptLeadSeconds
+		+ self:_playerLeadSeconds(racer, 0)
+		+ self:_playerGraceSeconds(racer)
 	for _, obstacle in zone.obstacles do
 		local distanceToImpact = obstacle.progress - progress
 		if
 			not obstacle.promptStarted
 			and distanceToImpact >= 0
-			and distanceToImpact / effectiveSpeed <= GameConfig.breaker.promptLeadSeconds
+			and distanceToImpact / effectiveSpeed <= promptLeadSeconds
 		then
 			self:_startBreakerPrompt(racer, zone, obstacle)
 		end
@@ -1752,11 +1878,7 @@ function RaceService:_updateBreakerZone(racer, progress)
 end
 
 function RaceService:_isNormalPromptTooCloseToObstacle(racer, promptDuration)
-	local progress = math.clamp(
-		(racer.root.Position - racer.startOrigin):Dot(racer.forward),
-		0,
-		racer.trackLength
-	)
+	local progress = racer.authoritativeDistance or 0
 	local nextTriggerProgress = nil
 	for _, obstacle in racer.obstacles do
 		if not obstacle.started and obstacle.triggerProgress >= progress then
@@ -1782,7 +1904,8 @@ function RaceService:_isNormalPromptTooCloseToObstacle(racer, promptDuration)
 	local secondsUntilTrigger = (nextTriggerProgress - progress) / effectiveSpeed
 	return secondsUntilTrigger
 		<= promptDuration
-			+ GameConfig.reactionWindow.scheduleLeadSeconds
+			+ self:_playerLeadSeconds(racer, GameConfig.reactionWindow.scheduleLeadSeconds)
+			+ self:_playerGraceSeconds(racer)
 			+ GameConfig.obstacle.normalPromptBufferSeconds
 end
 
@@ -1837,10 +1960,12 @@ function RaceService:_runReactionLoop(racer)
 				task.wait(GameConfig.obstacle.promptSuppressionPollSeconds)
 				break
 			end
-			local scheduleLead = if racer.tempoStage >= 2
+			local sentAt = Workspace:GetServerTimeNow()
+			local baseLead = if racer.tempoStage >= 2
 				then 0
 				else GameConfig.reactionWindow.scheduleLeadSeconds
-			local opensAt = Workspace:GetServerTimeNow() + scheduleLead
+			local scheduleLead = self:_playerLeadSeconds(racer, baseLead)
+			local opensAt = sentAt + scheduleLead
 			local event = {
 				id = self._eventId,
 				opensAt = opensAt,
@@ -1848,6 +1973,7 @@ function RaceService:_runReactionLoop(racer)
 				duration = duration,
 				resolved = false,
 			}
+			self:_stampPrompt(racer, event, "Normal", sentAt)
 			racer.reaction = event
 
 			self._reactionWindowRemote:FireClient(racer.player, {
@@ -1872,7 +1998,7 @@ function RaceService:_runReactionLoop(racer)
 				self._state == "Racing"
 				and not racer.finished
 				and not event.resolved
-				and Workspace:GetServerTimeNow() <= event.closesAt
+				and Workspace:GetServerTimeNow() <= event.resolveAt
 			do
 				task.wait()
 			end
@@ -1914,16 +2040,19 @@ function RaceService:_submitReaction(player, eventId, clientPressedAt)
 	end
 
 	local serverNow = Workspace:GetServerTimeNow()
-	if
-		math.abs(serverNow - clientPressedAt)
-		> GameConfig.reactionWindow.maximumClockDifferenceSeconds
-	then
+	if not self:_isClientTimestampPlausible(racer, serverNow, clientPressedAt) then
 		return
 	end
+	racer.player:SetAttribute("LastReactionReceivedAt", serverNow)
+	racer.player:SetAttribute("LastReactionPressedAt", clientPressedAt)
+	racer.player:SetAttribute("LastReactionEventId", eventId)
 
 	local lavaEvent = racer.lavaReaction
 	if lavaEvent and not lavaEvent.resolved and lavaEvent.id == eventId then
-		local reactionSeconds = clientPressedAt - lavaEvent.opensAt
+		local reactionSeconds = NetworkTiming.reactionSeconds(lavaEvent, clientPressedAt)
+		if reactionSeconds == nil then
+			return
+		end
 		local verdict = Reaction.verdictFor(reactionSeconds, lavaEvent.duration)
 		if verdict then
 			lavaEvent.resolved = true
@@ -1953,7 +2082,10 @@ function RaceService:_submitReaction(player, eventId, clientPressedAt)
 
 	local breakerEvent = racer.breakerReactions[eventId]
 	if breakerEvent and not breakerEvent.resolved then
-		local reactionSeconds = clientPressedAt - breakerEvent.opensAt
+		local reactionSeconds = NetworkTiming.reactionSeconds(breakerEvent, clientPressedAt)
+		if reactionSeconds == nil then
+			return
+		end
 		local verdict = Reaction.verdictFor(reactionSeconds, breakerEvent.duration)
 		if verdict then
 			racer.validInputCount += 1
@@ -1965,7 +2097,10 @@ function RaceService:_submitReaction(player, eventId, clientPressedAt)
 
 	local obstacleEvent = racer.obstacleReactions[eventId]
 	if obstacleEvent and not obstacleEvent.resolved then
-		local reactionSeconds = clientPressedAt - obstacleEvent.opensAt
+		local reactionSeconds = NetworkTiming.reactionSeconds(obstacleEvent, clientPressedAt)
+		if reactionSeconds == nil then
+			return
+		end
 		local verdict = Reaction.verdictFor(reactionSeconds, obstacleEvent.duration)
 		if verdict then
 			racer.validInputCount += 1
@@ -1980,7 +2115,10 @@ function RaceService:_submitReaction(player, eventId, clientPressedAt)
 		return
 	end
 
-	local reactionSeconds = clientPressedAt - event.opensAt
+	local reactionSeconds = NetworkTiming.reactionSeconds(event, clientPressedAt)
+	if reactionSeconds == nil then
+		return
+	end
 	local verdict = Reaction.verdictFor(reactionSeconds, event.duration)
 	if not verdict then
 		return
@@ -2012,6 +2150,7 @@ function RaceService:_finishRacer(racer)
 	local finishTime = Workspace:GetServerTimeNow() - self._raceStartedAt
 	racer.player:SetAttribute("DistanceRemaining", 0)
 	racer.player:SetAttribute("RaceProgress", 1)
+	racer.player:SetAttribute("AuthoritativeDistance", racer.trackLength)
 	racer.player:SetAttribute("FinishTime", finishTime)
 	racer.player:SetAttribute("Rank", self._finishCount)
 	if self._dataService then
@@ -2036,6 +2175,9 @@ function RaceService:_finishRacer(racer)
 	racer.root.Anchored = false
 	racer.root.AssemblyLinearVelocity = Vector3.zero
 	racer.root.AssemblyAngularVelocity = Vector3.zero
+	pcall(function()
+		racer.root:SetNetworkOwner(nil)
+	end)
 	self._reactionWindowRemote:FireClient(racer.player, { action = "hide" })
 	self._breakerStateRemote:FireClient(racer.player, { action = "clear" })
 end
@@ -2078,21 +2220,25 @@ function RaceService:_updateRacers()
 
 		local speed = racer.speed
 		local effectiveSpeed = speed * racer.speedMultiplier
-		local velocity = racer.root.AssemblyLinearVelocity
 		local forwardSpeed = if racer.recoveringUntil > 0 then 0 else effectiveSpeed
-		local forwardVelocity = racer.forward * forwardSpeed
-		racer.root.AssemblyLinearVelocity =
-			Vector3.new(forwardVelocity.X, velocity.Y, forwardVelocity.Z)
-
-		local progress = math.clamp(
-			(racer.root.Position - racer.startOrigin):Dot(racer.forward),
-			0,
+		local deltaTime = math.max(0, now - racer.lastTickAt)
+		racer.lastTickAt = now
+		racer.authoritativeDistance = MovementPrediction.advanceDistance(
+			racer.authoritativeDistance,
+			forwardSpeed,
+			deltaTime,
 			racer.trackLength
 		)
+		local progress = racer.authoritativeDistance
 		self:_updateBreakerZone(racer, progress)
+		local obstacleTriggerLeadStuds = effectiveSpeed
+			* (self:_playerLeadSeconds(racer, 0) + self:_playerGraceSeconds(racer))
 
 		for _, obstacle in racer.obstacles do
-			if not obstacle.started and progress >= obstacle.triggerProgress then
+			if
+				not obstacle.started
+				and progress >= obstacle.triggerProgress - obstacleTriggerLeadStuds
+			then
 				self:_startObstacleSequence(racer, obstacle)
 				break
 			end
@@ -2128,17 +2274,16 @@ function RaceService:_updateRacers()
 		end
 		if now - racer.lastReplicationAt >= 0.1 then
 			racer.lastReplicationAt = now
+			self:_refreshNetworkTiming(racer, now, false)
 			player:SetAttribute("Speed", speed)
 			player:SetAttribute("EffectiveSpeed", effectiveSpeed)
 			player:SetAttribute("DistanceRemaining", math.max(0, racer.trackLength - progress))
 			player:SetAttribute("RaceProgress", progress / racer.trackLength)
+			player:SetAttribute("AuthoritativeUpdatedAt", now)
+			player:SetAttribute("AuthoritativeDistance", progress)
 		end
 
-		local crossedLaneTarget = progress >= racer.trackLength
-		if
-			isCharacterInsideFinish(racer.character, self._activeTrack.finish)
-			or crossedLaneTarget
-		then
+		if progress >= racer.trackLength then
 			self:_finishRacer(racer)
 		end
 	end
@@ -2199,7 +2344,14 @@ function RaceService:_runRace(eligiblePlayers)
 		self._nextLavaWaveAt = self._raceStartedAt + GameConfig.lavaWave.firstWaveDelaySeconds
 	end
 	for _, racer in self._racers do
+		racer.authoritativeDistance = 0
+		racer.lastTickAt = self._raceStartedAt
+		racer.player:SetAttribute("AuthoritativeDistance", 0)
+		racer.player:SetAttribute("AuthoritativeUpdatedAt", self._raceStartedAt)
 		racer.root.Anchored = false
+		pcall(function()
+			racer.root:SetNetworkOwner(racer.player)
+		end)
 		racer.player:SetAttribute("RaceStatus", "Racing")
 		task.spawn(function()
 			self:_runReactionLoop(racer)

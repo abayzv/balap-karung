@@ -32,6 +32,7 @@ return function()
 			expect(GameConfig.leaderboard.writeIntervalSeconds >= 60).to.equal(true)
 			expect(GameConfig.leaderboard.initialWriteDelaySeconds >= 10).to.equal(true)
 			expect(GameConfig.leaderboard.minimumValue).to.equal(1)
+			expect(#GameConfig.leaderboard.excludedUserIds > 0).to.equal(true)
 		end)
 
 		it("configures lightweight client leaf ambience", function()
@@ -79,6 +80,16 @@ return function()
 					< GameConfig.reactionWindow.perfectEndRatio
 			).to.equal(true)
 			expect(GameConfig.reactionWindow.perfectEndRatio < 1).to.equal(true)
+		end)
+
+		it("caps latency compensation without trusting client duration", function()
+			local networking = GameConfig.networking
+			expect(networking.pingIntervalSeconds > 0).to.equal(true)
+			expect(networking.maximumOneWayLatencySeconds <= 0.5).to.equal(true)
+			expect(networking.maximumGraceSeconds <= networking.maximumOneWayLatencySeconds).to.equal(
+				true
+			)
+			expect(GameConfig.reactionWindow.maximumClockDifferenceSeconds >= 1).to.equal(true)
 		end)
 
 		it("makes every progress stage faster", function()
@@ -129,7 +140,11 @@ return function()
 
 		it("configures a physical guard impact", function()
 			expect(GameConfig.obstacle.guardRaycastDistanceStuds > 0).to.equal(true)
-			expect(GameConfig.obstacle.guardServerValidationDistanceStuds > 0).to.equal(true)
+			expect(GameConfig.obstacle.guardBaseValidationDistanceStuds > 0).to.equal(true)
+			expect(
+				GameConfig.obstacle.guardMaxValidationDistanceStuds
+					> GameConfig.obstacle.guardBaseValidationDistanceStuds
+			).to.equal(true)
 			expect(GameConfig.obstacle.guardCrashLeadStuds > 0).to.equal(true)
 			expect(GameConfig.obstacle.characterCrashHitboxSize.Magnitude > 0).to.equal(true)
 			expect(GameConfig.obstacle.guardThrowHorizontalSpeed > 0).to.equal(true)
@@ -147,7 +162,11 @@ return function()
 				GameConfig.breaker.minimumObstacleSpacingStuds
 					< GameConfig.breaker.maximumObstacleSpacingStuds
 			).to.equal(true)
-			expect(GameConfig.breaker.serverValidationDistanceStuds > 0).to.equal(true)
+			expect(GameConfig.breaker.baseValidationDistanceStuds > 0).to.equal(true)
+			expect(
+				GameConfig.breaker.maxValidationDistanceStuds
+					> GameConfig.breaker.baseValidationDistanceStuds
+			).to.equal(true)
 			expect(GameConfig.breaker.debrisSpreadRandomness > 0).to.equal(true)
 			expect(GameConfig.sounds.breakerImpact.soundId ~= "").to.equal(true)
 		end)
@@ -237,6 +256,16 @@ return function()
 
 		it("configures a short Miss recovery", function()
 			expect(GameConfig.movement.missRecoverySeconds).to.equal(0.65)
+		end)
+
+		it("bounds client movement reconciliation", function()
+			expect(GameConfig.movement.smoothCorrectionThresholdStuds > 0).to.equal(true)
+			expect(
+				GameConfig.movement.snapCorrectionThresholdStuds
+					> GameConfig.movement.smoothCorrectionThresholdStuds
+			).to.equal(true)
+			expect(GameConfig.movement.smoothCorrectionRate > 0).to.equal(true)
+			expect(GameConfig.movement.maximumExtrapolationSeconds > 0).to.equal(true)
 		end)
 
 		it("provides all core sound config slots", function()

@@ -5,6 +5,7 @@ local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
+local ImpactFeedback = require(ReplicatedStorage.Shared.ImpactFeedback)
 local SoundController = require(script.Parent.SoundController)
 
 local BreakerController = {}
@@ -146,7 +147,6 @@ local function animateObstacle(obstacle, impactPart, throwDirection, forward)
 
 	Debris:AddItem(debris, GameConfig.breaker.debrisLifetimeSeconds)
 	emitBreakerExplosion(impactPart)
-	SoundController.Play("breakerImpact")
 end
 
 function BreakerController.Start(stateRemote, submitImpactRemote, impactRemote)
@@ -194,6 +194,9 @@ function BreakerController.Start(stateRemote, submitImpactRemote, impactRemote)
 			return
 		end
 		animateObstacle(obstacle, impactPart, payload.throwDirection, payload.forward)
+		if ImpactFeedback.shouldPlaySound(player.UserId, payload.soundUserId, false) then
+			SoundController.Play("breakerImpact")
+		end
 	end)
 
 	RunService.RenderStepped:Connect(function()
@@ -231,6 +234,7 @@ function BreakerController.Start(stateRemote, submitImpactRemote, impactRemote)
 					prediction.throwDirection,
 					prediction.forward
 				)
+				SoundController.Play("breakerImpact")
 				submitImpactRemote:FireServer(impactPart, Workspace:GetServerTimeNow())
 			end
 		end
