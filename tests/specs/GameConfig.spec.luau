@@ -204,17 +204,19 @@ return function()
 			expect(GameConfig.effects.breakerExplosionCleanupPaddingSeconds > 0).to.equal(true)
 		end)
 
-		it("configures an adaptive R15 sack mount", function()
+		it("configures three exact R15 sack sizes", function()
 			expect(GameConfig.sack.templateName).to.equal("KarungModel")
 			expect(GameConfig.sack.partName).to.equal("Karung")
-			expect(GameConfig.sack.topHeightRatio > 0).to.equal(true)
-			expect(GameConfig.sack.maximumVerticalScale > GameConfig.sack.minimumVerticalScale).to.equal(
-				true
-			)
-			expect(GameConfig.sack.minimumWidthStuds > 0).to.equal(true)
-			expect(GameConfig.sack.maximumWidthStuds > GameConfig.sack.minimumWidthStuds).to.equal(
-				true
-			)
+			expect(#GameConfig.sack.sizeClasses).to.equal(3)
+			expect(GameConfig.sack.sizeClasses[1].name).to.equal("Short")
+			expect(GameConfig.sack.sizeClasses[2].name).to.equal("Standard")
+			expect(GameConfig.sack.sizeClasses[3].name).to.equal("Tall")
+			expect(GameConfig.sack.sizeClasses[1].maximumHipHeight).to.equal(1.81)
+			expect(GameConfig.sack.sizeClasses[2].maximumHipHeight).to.equal(3.4)
+			for _, sizeClass in GameConfig.sack.sizeClasses do
+				expect(sizeClass.size.Magnitude > 0).to.equal(true)
+				expect(typeof(sizeClass.mountOffset)).to.equal("Vector3")
+			end
 			expect(type(GameConfig.sack.originalTransparencyAttribute)).to.equal("string")
 		end)
 
@@ -290,6 +292,10 @@ return function()
 
 		it("uses the shared DynamicScale UI tag", function()
 			expect(GameConfig.ui.dynamicScaleTag).to.equal("DynamicScale")
+		end)
+
+		it("disables verdict feedback strokes", function()
+			expect(GameConfig.ui.feedback.strokeEnabled).to.equal(false)
 		end)
 
 		it("keeps random prompt positions inside the screen", function()

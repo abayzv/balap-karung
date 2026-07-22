@@ -104,7 +104,7 @@ end
 local function makeLabel(parent, text, position, size, alignment)
 	local label = Instance.new("TextLabel")
 	label.BackgroundTransparency = 1
-	label.Font = Enum.Font.GothamBold
+	label.Font = Enum.Font.FredokaOne
 	label.Position = position
 	label.Size = size
 	label.Text = text
@@ -114,8 +114,8 @@ local function makeLabel(parent, text, position, size, alignment)
 	label.TextXAlignment = alignment
 	label.Parent = parent
 	local constraint = Instance.new("UITextSizeConstraint")
-	constraint.MaxTextSize = 38
-	constraint.MinTextSize = 18
+	constraint.MaxTextSize = 72
+	constraint.MinTextSize = 60
 	constraint.Parent = label
 	return label
 end
@@ -142,36 +142,36 @@ local function renderEntries(boardState, entries)
 		card.BackgroundTransparency = if position <= 3 then 0.08 else 0.18
 		card.BorderSizePixel = 0
 		card.LayoutOrder = position
-		card.Size = UDim2.new(1, -4, 0, 92)
+		card.Size = UDim2.new(1, -4, 0, 120)
 		card.Parent = scroll
 		addCorner(card, 18)
 
-		local stroke = Instance.new("UIStroke")
-		stroke.Color = if position <= 3
-			then Color3.fromRGB(255, 225, 119)
-			else Color3.fromRGB(255, 255, 255)
-		stroke.Thickness = if position <= 3 then 2 else 1
-		stroke.Transparency = if position <= 3 then 0.25 else 0.82
-		stroke.Parent = card
+		-- local stroke = Instance.new("UIStroke")
+		-- stroke.Color = if position <= 3
+		-- 	then Color3.fromRGB(255, 225, 119)
+		-- 	else Color3.fromRGB(255, 255, 255)
+		-- stroke.Thickness = if position <= 3 then 2 else 1
+		-- stroke.Transparency = if position <= 3 then 0.25 else 0.82
+		-- stroke.Parent = card
 
 		makeLabel(
 			card,
 			`#{position}`,
-			UDim2.fromOffset(18, 12),
+			UDim2.fromOffset(18, 16),
 			UDim2.fromOffset(105, 68),
 			Enum.TextXAlignment.Center
 		)
 		makeLabel(
 			card,
 			entry.username,
-			UDim2.fromOffset(142, 12),
+			UDim2.fromOffset(142, 16),
 			UDim2.new(1, -410, 0, 68),
 			Enum.TextXAlignment.Left
 		)
 		local value = makeLabel(
 			card,
 			LeaderboardFormat.formatValue(boardState.dataKey, entry.value),
-			UDim2.new(1, -260, 0, 12),
+			UDim2.new(1, -260, 0, 16),
 			UDim2.fromOffset(238, 68),
 			Enum.TextXAlignment.Right
 		)

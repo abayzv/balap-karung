@@ -1,7 +1,7 @@
 local GameConfig = {
-	TEST_MODE = false,
+	TEST_MODE = true,
 	TEST_TRACK_ID = "Road",
-	TEST_COUNTDOWN = 5,
+	TEST_COUNTDOWN = 30,
 	projectName = "BalapKarung",
 	data = {
 		storeName = "BalapKarungPlayerData_v1",
@@ -80,8 +80,8 @@ local GameConfig = {
 	},
 	speed = {
 		normalValue = 32,
-		onFireValue = 44,
-		onFireDurationSeconds = 3,
+		onFireValue = 40,
+		onFireDurationSeconds = 2,
 		verdictBoostDurationSeconds = {
 			Good = 1.2,
 			Perfect = 1.7,
@@ -217,22 +217,27 @@ local GameConfig = {
 		motorName = "BalapKarungSackMotor",
 		mountedAttribute = "BalapKarungMountedSack",
 		originalTransparencyAttribute = "BalapKarungOriginalTransparency",
-		topHeightRatio = 0.25,
-		bottomPaddingStuds = 0.1,
-		widthPaddingStuds = 0.2,
-		depthPaddingStuds = 0.15,
-		widthMultiplier = 1.15,
-		depthMultiplier = 1.35,
-		minimumWidthStuds = 2,
-		minimumDepthStuds = 1.35,
-		maximumWidthStuds = 3,
-		maximumDepthStuds = 2,
-		widthToHeightRatio = 0.65,
-		depthToHeightRatio = 0.4,
-		forwardOffsetStuds = 0,
-		minimumHeightStuds = 1.5,
-		minimumVerticalScale = 0.5,
-		maximumVerticalScale = 4,
+		sizeClassAttribute = "BalapKarungSackSizeClass",
+		classificationValueAttribute = "BalapKarungClassificationHipHeight",
+		sizeClasses = {
+			{
+				name = "Short",
+				maximumHipHeight = 1.81,
+				size = Vector3.new(1.595, 2.183, 1.112),
+				mountOffset = Vector3.new(0, -0.948, 0),
+			},
+			{
+				name = "Standard",
+				maximumHipHeight = 3.4,
+				size = Vector3.new(2.504, 2.976, 1.509),
+				mountOffset = Vector3.new(0, -1.029, 0),
+			},
+			{
+				name = "Tall",
+				size = Vector3.new(2.36, 5.702, 1.622),
+				mountOffset = Vector3.new(0, -2.572, 0),
+			},
+		},
 		rotationDegrees = Vector3.new(0, 0, 0),
 	},
 	sounds = {
@@ -302,6 +307,9 @@ local GameConfig = {
 	},
 	ui = {
 		dynamicScaleTag = "DynamicScale",
+		feedback = {
+			strokeEnabled = false,
+		},
 		podiumCinematic = {
 			templateName = "Cinematics",
 			localSceneName = "LocalPodiumCinematic",

@@ -375,13 +375,13 @@ local function App(props)
 			TextStrokeTransparency = 1,
 			ref = feedbackLabelRef,
 		}, {
-			Outline = e("UIStroke", {
+			Outline = GameConfig.ui.feedback.strokeEnabled and e("UIStroke", {
 				ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual,
 				Color = feedbackOutlineColor(feedback.text),
 				LineJoinMode = Enum.LineJoinMode.Round,
 				Thickness = 2.5,
 				Transparency = 0.04,
-			}),
+			}) or nil,
 		}) or nil,
 	}
 	for id, reaction in reactions do

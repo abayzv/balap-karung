@@ -1,6 +1,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
+local SackSizing = require(ReplicatedStorage.Shared.SackSizing)
 
 local SackService = {}
 
@@ -20,40 +21,6 @@ local HIDDEN_ACCESSORY_TYPES = {
 	LeftShoe = true,
 	RightShoe = true,
 }
-
-local function projectedHalfHeight(part, referenceCFrame)
-	local relative = referenceCFrame:ToObjectSpace(part.CFrame)
-	local halfSize = part.Size / 2
-	return math.abs(relative.RightVector.Y) * halfSize.X
-		+ math.abs(relative.UpVector.Y) * halfSize.Y
-		+ math.abs(relative.LookVector.Y) * halfSize.Z
-end
-
-local function getLegBottom(character, lowerTorso)
-	local bottom = math.huge
-	local foundLeg = false
-	for _, name in LEG_PART_NAMES do
-		local part = character:FindFirstChild(name)
-		if part and part:IsA("BasePart") then
-			local localPosition = lowerTorso.CFrame:PointToObjectSpace(part.Position)
-			bottom =
-				math.min(bottom, localPosition.Y - projectedHalfHeight(part, lowerTorso.CFrame))
-			foundLeg = true
-		end
-	end
-	return if foundLeg then bottom else nil
-end
-
-local function getTargetHeight(character, humanoid, lowerTorso)
-	local config = GameConfig.sack
-	local legBottom = getLegBottom(character, lowerTorso)
-	if not legBottom then
-		legBottom = -humanoid.HipHeight - lowerTorso.Size.Y / 2
-	end
-	local sackTop = lowerTorso.Size.Y * config.topHeightRatio
-	return math.max(config.minimumHeightStuds, sackTop - legBottom + config.bottomPaddingStuds),
-		sackTop
-end
 
 local function getSackPartTemplate()
 	local config = GameConfig.sack
@@ -163,30 +130,15 @@ function SackService.Attach(character)
 		return false
 	end
 
-	local targetHeight, sackTop = getTargetHeight(character, humanoid, lowerTorso)
-	local verticalScale = math.clamp(
-		targetHeight / sourcePart.Size.Y,
-		config.minimumVerticalScale,
-		config.maximumVerticalScale
-	)
-	local targetWidth = math.max(
-		config.minimumWidthStuds,
-		lowerTorso.Size.X * config.widthMultiplier + config.widthPaddingStuds,
-		math.min(config.maximumWidthStuds, targetHeight * config.widthToHeightRatio)
-	)
-	local targetDepth = math.max(
-		config.minimumDepthStuds,
-		lowerTorso.Size.Z * config.depthMultiplier + config.depthPaddingStuds,
-		math.min(config.maximumDepthStuds, targetHeight * config.depthToHeightRatio)
-	)
+	local sizeClass = SackSizing.getSizeClass(config.sizeClasses, humanoid.HipHeight)
 
 	local sack = sourcePart:Clone()
 	sack.Name = config.mountedPartName
 	sack:SetAttribute(config.mountedAttribute, true)
+	sack:SetAttribute(config.sizeClassAttribute, sizeClass.name)
+	sack:SetAttribute(config.classificationValueAttribute, humanoid.HipHeight)
 	sack.PivotOffset = CFrame.identity
-	-- Leg length should only affect sack height. Uniform scaling made tall,
-	-- slim avatars wear an absurdly wide sack.
-	sack.Size = Vector3.new(targetWidth, sourcePart.Size.Y * verticalScale, targetDepth)
+	sack.Size = sizeClass.size
 	sack.Anchored = false
 	sack.CanCollide = false
 	sack.CanTouch = false
@@ -195,8 +147,7 @@ function SackService.Attach(character)
 	sack.CastShadow = true
 	sack.Parent = character
 
-	local centerY = sackTop - sack.Size.Y / 2
-	local localMount = CFrame.new(0, centerY, config.forwardOffsetStuds)
+	local localMount = CFrame.new(sizeClass.mountOffset)
 		* CFrame.Angles(
 			math.rad(config.rotationDegrees.X),
 			math.rad(config.rotationDegrees.Y),
