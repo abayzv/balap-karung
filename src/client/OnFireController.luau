@@ -7,87 +7,6 @@ local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 
 local OnFireController = {}
 
-local function createEdge(parent, name, size, position, transparency)
-	local edge = Instance.new("Frame")
-	edge.Name = name
-	edge.BackgroundColor3 = Color3.fromRGB(255, 58, 12)
-	edge.BackgroundTransparency = 0.45
-	edge.BorderSizePixel = 0
-	edge.Position = position
-	edge.Size = size
-	edge.Parent = parent
-
-	local gradient = Instance.new("UIGradient")
-	gradient.Color = ColorSequence.new(Color3.fromRGB(255, 32, 8), Color3.fromRGB(255, 170, 28))
-	gradient.Transparency = transparency
-	gradient.Parent = edge
-	return gradient
-end
-
-local function createVignette(playerGui)
-	local existing = playerGui:FindFirstChild("BalapKarungOnFireEffects")
-	if existing then
-		existing:Destroy()
-	end
-
-	local screenGui = Instance.new("ScreenGui")
-	screenGui.Name = "BalapKarungOnFireEffects"
-	screenGui.DisplayOrder = 9000
-	screenGui.IgnoreGuiInset = true
-	screenGui.ResetOnSpawn = false
-	screenGui.Parent = playerGui
-
-	local group = Instance.new("CanvasGroup")
-	group.Name = "FireVignette"
-	group.BackgroundTransparency = 1
-	group.GroupTransparency = 1
-	group.Size = UDim2.fromScale(1, 1)
-	group.Visible = false
-	group.Parent = screenGui
-
-	local transparentToFire = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 1),
-		NumberSequenceKeypoint.new(1, 0.08),
-	})
-	local fireToTransparent = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0.08),
-		NumberSequenceKeypoint.new(1, 1),
-	})
-
-	local top = createEdge(
-		group,
-		"TopFire",
-		UDim2.fromScale(1, 0.08),
-		UDim2.fromScale(0, 0),
-		fireToTransparent
-	)
-	top.Rotation = 90
-	local bottom = createEdge(
-		group,
-		"BottomFire",
-		UDim2.fromScale(1, 0.1),
-		UDim2.fromScale(0, 0.9),
-		transparentToFire
-	)
-	bottom.Rotation = 90
-	createEdge(
-		group,
-		"LeftFire",
-		UDim2.fromScale(0.05, 1),
-		UDim2.fromScale(0, 0),
-		fireToTransparent
-	)
-	createEdge(
-		group,
-		"RightFire",
-		UDim2.fromScale(0.05, 1),
-		UDim2.fromScale(0.95, 0),
-		transparentToFire
-	)
-
-	return group
-end
-
 local function transparencyForProgress(progressRatio)
 	if progressRatio <= 0 then
 		return NumberSequence.new(0)
@@ -107,6 +26,10 @@ end
 function OnFireController.Start()
 	local player = Players.LocalPlayer
 	local playerGui = player:WaitForChild("PlayerGui")
+	local legacyVignette = playerGui:FindFirstChild("BalapKarungOnFireEffects")
+	if legacyVignette then
+		legacyVignette:Destroy()
+	end
 	local fillValue = Instance.new("NumberValue")
 	local fillTween = nil
 	local onFireDrainTween = nil
@@ -117,10 +40,7 @@ function OnFireController.Start()
 	local baseDisplayScale = 1
 	local displayPulse = nil
 	local cameraTween = nil
-	local vignettePulse = nil
 	local effectWasOnFire = false
-
-	local vignette = createVignette(playerGui)
 
 	local function renderFill()
 		if not fillGradient then
@@ -204,10 +124,6 @@ function OnFireController.Start()
 			displayPulse:Cancel()
 			displayPulse = nil
 		end
-		if vignettePulse then
-			vignettePulse:Cancel()
-			vignettePulse = nil
-		end
 		if onFireDrainTween then
 			onFireDrainTween:Cancel()
 			onFireDrainTween = nil
@@ -228,14 +144,6 @@ function OnFireController.Start()
 				{ Value = 0 }
 			)
 			onFireDrainTween:Play()
-			vignette.Visible = true
-			vignette.GroupTransparency = 0.68
-			vignettePulse = TweenService:Create(
-				vignette,
-				TweenInfo.new(0.48, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
-				{ GroupTransparency = 0.8 }
-			)
-			vignettePulse:Play()
 			if displayScale then
 				displayScale.Scale = baseDisplayScale
 				displayPulse = TweenService:Create(
@@ -247,8 +155,6 @@ function OnFireController.Start()
 			end
 		else
 			tweenProgress()
-			vignette.Visible = false
-			vignette.GroupTransparency = 1
 			if displayScale then
 				displayScale.Scale = baseDisplayScale
 			end

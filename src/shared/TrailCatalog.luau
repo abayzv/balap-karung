@@ -13,6 +13,7 @@ local DEFAULT_TRAIL = {
 	price = 0,
 	colors = { Color3.fromRGB(150, 156, 170), Color3.fromRGB(230, 234, 242) },
 	order = -math.huge,
+	thumbnail = nil,
 }
 
 local function readAttribute(instance, names, fallback)
@@ -41,6 +42,26 @@ local function brighten(color)
 	)
 end
 
+function TrailCatalog.normalizeThumbnail(value)
+	if type(value) == "number" then
+		local assetId = math.floor(value)
+		return if assetId > 0 then `rbxassetid://{assetId}` else nil
+	elseif type(value) ~= "string" then
+		return nil
+	end
+
+	local trimmed = value:match("^%s*(.-)%s*$")
+	local lower = string.lower(trimmed)
+	local assetId = lower:match("^rbxassetid://(%d+)$")
+		or lower:match("^rbx:id[:/]*(%d+)$")
+		or lower:match("^rbx:(%d+)$")
+		or lower:match("^(%d+)$")
+	if not assetId or tonumber(assetId) <= 0 then
+		return nil
+	end
+	return `rbxassetid://{assetId}`
+end
+
 local function definitionFromPart(source)
 	local displayName = readAttribute(source, { "Name", "DisplayName" }, source.Name)
 	if type(displayName) ~= "string" or displayName == "" then
@@ -59,6 +80,9 @@ local function definitionFromPart(source)
 		description = description,
 		price = math.max(0, math.floor(price)),
 		colors = { color, brighten(color) },
+		thumbnail = TrailCatalog.normalizeThumbnail(
+			readAttribute(source, { "Thumbnail", "thumbnail" }, nil)
+		),
 		order = tonumber(readAttribute(source, { "Order", "LayoutOrder" }, 0)) or 0,
 		source = source,
 	}

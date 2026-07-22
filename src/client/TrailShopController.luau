@@ -101,6 +101,32 @@ local function getCardParts(card)
 	return preview, title, description, action
 end
 
+local function applyThumbnail(preview, thumbnail)
+	local oldThumbnail = preview:FindFirstChild("RuntimeThumbnail")
+	if oldThumbnail then
+		oldThumbnail:Destroy()
+	end
+	if not thumbnail then
+		return
+	end
+
+	local image = Instance.new("ImageLabel")
+	image.Name = "RuntimeThumbnail"
+	image.BackgroundTransparency = 1
+	image.Size = UDim2.fromScale(1, 1)
+	image.Image = thumbnail
+	image.ScaleType = Enum.ScaleType.Crop
+	image.ZIndex = preview.ZIndex + 1
+	image.Parent = preview
+
+	local previewCorner = preview:FindFirstChildOfClass("UICorner")
+	if previewCorner then
+		local corner = Instance.new("UICorner")
+		corner.CornerRadius = previewCorner.CornerRadius
+		corner.Parent = image
+	end
+end
+
 local function createCard(trail, layoutOrder)
 	local owned = player:GetAttribute(`OwnsTrail_{trail.id}`) == true
 	local equipped = player:GetAttribute("EquippedTrail") == trail.id
@@ -124,6 +150,7 @@ local function createCard(trail, layoutOrder)
 	if previewGradient then
 		previewGradient.Color = makeColorSequence(trail.colors)
 	end
+	applyThumbnail(preview, trail.thumbnail)
 
 	action.Active = not equipped
 	action.AutoButtonColor = not equipped

@@ -101,7 +101,7 @@ return function()
 		end)
 
 		it("gives On Fire a finite duration", function()
-			expect(GameConfig.speed.onFireDurationSeconds).to.equal(3)
+			expect(GameConfig.speed.onFireDurationSeconds).to.equal(2)
 		end)
 
 		it("configures a staggered triple-tap obstacle combo", function()
@@ -150,6 +150,21 @@ return function()
 			expect(GameConfig.breaker.serverValidationDistanceStuds > 0).to.equal(true)
 			expect(GameConfig.breaker.debrisSpreadRandomness > 0).to.equal(true)
 			expect(GameConfig.sounds.breakerImpact.soundId ~= "").to.equal(true)
+		end)
+
+		it("configures recurring Lava track waves", function()
+			expect(GameConfig.lavaWave.trackId).to.equal("Lava")
+			expect(GameConfig.lavaWave.speedStudsPerSecond > GameConfig.speed.normalValue).to.equal(
+				true
+			)
+			expect(GameConfig.lavaWave.minimumIntervalSeconds > 0).to.equal(true)
+			expect(
+				GameConfig.lavaWave.maximumIntervalSeconds
+					>= GameConfig.lavaWave.minimumIntervalSeconds
+			).to.equal(true)
+			expect(GameConfig.ui.tapSkills.LavaJump.label).to.equal("Jump")
+			expect(#GameConfig.lavaWave.variants).to.equal(3)
+			expect(GameConfig.lavaWave.variants[3].waveCount).to.equal(2)
 		end)
 
 		it("keeps the temporary Good and Perfect speed boosts", function()
@@ -255,10 +270,9 @@ return function()
 			expect(podium.templateName).to.equal("Cinematics")
 			expect(podium.localSceneName).to.equal("LocalPodiumCinematic")
 			expect(podium.cameraTag).to.equal("PodiumCamera")
-			expect(podium.characterSpotTag).to.equal("ResultsCharacterSpot")
 			expect(podium.titles.First).to.equal("JUARA!")
-			expect(podium.characterScale > 1).to.equal(true)
-			expect(string.find(podium.danceR15AnimationId, "rbxassetid://", 1, true)).to.equal(1)
+			expect(podium.avatarHeightScale > 0).to.equal(true)
+			expect(podium.avatarStrokeThickness > 0).to.equal(true)
 		end)
 
 		it("configures attribute-driven skill notifications", function()

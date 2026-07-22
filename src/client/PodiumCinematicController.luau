@@ -17,89 +17,71 @@ local function findTaggedDescendant(tag, ancestor)
 	return nil
 end
 
-local function cloneCharacter(result)
-	local sourcePlayer = Players:GetPlayerByUserId(result.userId)
-	local sourceCharacter = sourcePlayer and sourcePlayer.Character
-	if sourceCharacter then
-		local wasArchivable = sourceCharacter.Archivable
-		sourceCharacter.Archivable = true
-		local clone = sourceCharacter:Clone()
-		sourceCharacter.Archivable = wasArchivable
-		return clone
-	end
-
-	local success, model = pcall(function()
-		return Players:CreateHumanoidModelFromUserIdAsync(result.userId)
-	end)
-	return if success then model else nil
-end
-
-local function playDance(character)
-	local humanoid = character:FindFirstChildOfClass("Humanoid")
-	if not humanoid then
-		return
-	end
-
-	local played = false
-	pcall(function()
-		played = humanoid:PlayEmote("dance")
-	end)
-	if played then
-		return
-	end
-
-	local animator = humanoid:FindFirstChildOfClass("Animator")
-	if not animator then
-		animator = Instance.new("Animator")
-		animator.Parent = humanoid
-	end
-	local animation = Instance.new("Animation")
-	animation.AnimationId = if humanoid.RigType == Enum.HumanoidRigType.R15
-		then GameConfig.ui.podiumCinematic.danceR15AnimationId
-		else GameConfig.ui.podiumCinematic.danceR6AnimationId
-	local track = animator:LoadAnimation(animation)
-	track.Looped = true
-	track.Priority = Enum.AnimationPriority.Action
-	track:Play(0.2)
-	animation:Destroy()
-end
-
-local function positionCharacter(character, floorPart, cameraPosition)
-	local root = character:FindFirstChild("HumanoidRootPart")
-	local humanoid = character:FindFirstChildOfClass("Humanoid")
-	if not root or not root:IsA("BasePart") or not humanoid then
-		return false
-	end
-
-	for _, descendant in character:GetDescendants() do
-		if descendant:IsA("BaseScript") then
-			descendant:Destroy()
-		elseif descendant:IsA("BasePart") then
-			descendant.CanCollide = false
-			descendant.CanTouch = false
-			descendant.CanQuery = false
-			descendant.Massless = true
-		end
-	end
-	root.Anchored = true
-	humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
-
-	local height = floorPart.Size.Y / 2
-		+ humanoid.HipHeight
-		+ root.Size.Y / 2
-		+ GameConfig.ui.podiumCinematic.characterHeightOffset
-	local position = floorPart.Position + floorPart.CFrame.UpVector * height
-	character:PivotTo(
-		CFrame.lookAt(position, Vector3.new(cameraPosition.X, position.Y, cameraPosition.Z))
-	)
-	return true
-end
-
 local function formatFinishTime(result)
 	if result.rank and result.rank > 0 and type(result.finishTime) == "number" then
 		return string.format("%.2fs", result.finishTime)
 	end
 	return "-"
+end
+
+local function clearCinematicAvatar(gui)
+	local existing = gui:FindFirstChild("CinematicAvatar")
+	if existing then
+		existing:Destroy()
+	end
+end
+
+local function createCinematicAvatar(gui, result, fallbackUserId)
+	clearCinematicAvatar(gui)
+	local config = GameConfig.ui.podiumCinematic
+	local userId = if result then result.userId else fallbackUserId
+	local rank = if result then result.rank else 0
+
+	local avatar = Instance.new("ImageLabel")
+	avatar.Name = "CinematicAvatar"
+	avatar.AnchorPoint = Vector2.new(0.5, 0.5)
+	avatar.BackgroundColor3 = Color3.fromRGB(22, 29, 45)
+	avatar.Position = UDim2.fromScale(config.avatarCenterX, config.avatarCenterY)
+	avatar.Size = UDim2.fromScale(config.avatarHeightScale, config.avatarHeightScale)
+	avatar.Image = ""
+	avatar.ScaleType = Enum.ScaleType.Crop
+	avatar.ZIndex = 4
+	avatar.Parent = gui
+
+	local aspect = Instance.new("UIAspectRatioConstraint")
+	aspect.AspectRatio = 1
+	aspect.DominantAxis = Enum.DominantAxis.Height
+	aspect.Parent = avatar
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(1, 0)
+	corner.Parent = avatar
+
+	local stroke = Instance.new("UIStroke")
+	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	stroke.Color = if rank == 1
+		then Color3.fromRGB(255, 219, 45)
+		elseif rank == 2 then Color3.fromRGB(218, 228, 242)
+		elseif rank == 3 then Color3.fromRGB(216, 135, 72)
+		else Color3.fromRGB(239, 244, 252)
+	stroke.Thickness = config.avatarStrokeThickness
+	stroke.Transparency = 0.05
+	stroke.Parent = avatar
+
+	task.spawn(function()
+		local success, image = pcall(function()
+			return Players:GetUserThumbnailAsync(
+				userId,
+				Enum.ThumbnailType.HeadShot,
+				Enum.ThumbnailSize.Size420x420
+			)
+		end)
+		if success and avatar.Parent then
+			avatar.Image = image
+		end
+	end)
+
+	return avatar
 end
 
 local function getResultTitle(result)
@@ -262,16 +244,8 @@ function PodiumCinematicController.Start(resultsRemote, soundController)
 		localScene.Name = config.localSceneName
 		localScene.Parent = Workspace
 		local cameraPart = findTaggedDescendant(config.cameraTag, localScene)
-		local characterSpot = findTaggedDescendant(config.characterSpotTag, localScene)
-		if
-			not cameraPart
-			or not cameraPart:IsA("BasePart")
-			or not characterSpot
-			or not characterSpot:IsA("BasePart")
-		then
-			warn(
-				"[BalapKarung] Results cinematic membutuhkan PodiumCamera dan ResultsCharacterSpot"
-			)
+		if not cameraPart or not cameraPart:IsA("BasePart") then
+			warn("[BalapKarung] Results cinematic membutuhkan PodiumCamera")
 			localScene:Destroy()
 			return
 		end
@@ -284,9 +258,6 @@ function PodiumCinematicController.Start(resultsRemote, soundController)
 		local originalFieldOfView = camera.FieldOfView
 		local originalGlobalShadows = Lighting.GlobalShadows
 		local previousGuiStates = {}
-		local characterFolder = Instance.new("Folder")
-		characterFolder.Name = "LocalResultsCharacter"
-		characterFolder.Parent = localScene
 
 		for _, child in playerGui:GetChildren() do
 			if child:IsA("ScreenGui") then
@@ -315,6 +286,7 @@ function PodiumCinematicController.Start(resultsRemote, soundController)
 				soundController.Stop("resultsCinematic")
 			end
 			resultsGui.Enabled = false
+			clearCinematicAvatar(resultsGui)
 			clearResultRows(resultsGui.LeaderboardPanel.Rows)
 			localScene:Destroy()
 			Lighting.GlobalShadows = originalGlobalShadows
@@ -340,24 +312,11 @@ function PodiumCinematicController.Start(resultsRemote, soundController)
 
 		local ownResult
 		ownResult, skipConnection = populateResultsGui(resultsGui, payload.results, player, cleanup)
+		createCinematicAvatar(resultsGui, ownResult, player.UserId)
 		resultsGui.Enabled = true
 		if soundController then
 			soundController.Play("resultsCinematic")
 		end
-		if ownResult then
-			local character = cloneCharacter(ownResult)
-			if character then
-				character.Name = `ResultsCharacter_{ownResult.name}`
-				character:ScaleTo(config.characterScale)
-				character.Parent = characterFolder
-				if positionCharacter(character, characterSpot, cameraPart.Position) then
-					playDance(character)
-				else
-					character:Destroy()
-				end
-			end
-		end
-
 		activeCleanup = cleanup
 	end)
 end

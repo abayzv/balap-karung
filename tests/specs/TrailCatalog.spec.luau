@@ -13,5 +13,14 @@ return function()
 			end
 			expect(seen[TrailCatalog.defaultTrailId]).to.equal(true)
 		end)
+
+		it("normalizes optional Roblox thumbnail attributes", function()
+			expect(TrailCatalog.normalizeThumbnail("rbxassetid://12345")).to.equal(
+				"rbxassetid://12345"
+			)
+			expect(TrailCatalog.normalizeThumbnail("rbx:id:67890")).to.equal("rbxassetid://67890")
+			expect(TrailCatalog.normalizeThumbnail(24680)).to.equal("rbxassetid://24680")
+			expect(TrailCatalog.normalizeThumbnail("bukan asset")).to.equal(nil)
+		end)
 	end)
 end

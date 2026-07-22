@@ -7,6 +7,7 @@ local StarterPlayer = game:GetService("StarterPlayer")
 local Workspace = game:GetService("Workspace")
 
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
+local LavaWaveMechanic = require(ReplicatedStorage.Shared.LavaWaveMechanic)
 local ObstacleMechanic = require(ReplicatedStorage.Shared.ObstacleMechanic)
 local Reaction = require(ReplicatedStorage.Shared.Reaction)
 local Speed = require(ReplicatedStorage.Shared.Speed)
@@ -58,6 +59,9 @@ local function setPlayerDefaults(player)
 	player:SetAttribute("BreakerActive", false)
 	player:SetAttribute("BreakerChain", 0)
 	player:SetAttribute("LastBreakerVerdict", "")
+	player:SetAttribute("LastLavaVerdict", "")
+	player:SetAttribute("LavaWavesDodged", 0)
+	player:SetAttribute("LavaWavesHit", 0)
 	player:SetAttribute("RaceValidInputs", 0)
 	player:SetAttribute("LastCoinReward", 0)
 end
@@ -529,6 +533,12 @@ function RaceService.new(dataService)
 	self._state = "Waiting"
 	self._trackService = TrackService.new()
 	self._activeTrack = nil
+	self._lavaEnabled = false
+	self._lavaGeometry = nil
+	self._lavaWaves = {}
+	self._lavaWaveId = 0
+	self._nextLavaWaveAt = 0
+	self._lavaRandom = Random.new()
 	self:_createRemotes()
 	return self
 end
@@ -596,7 +606,6 @@ function RaceService:_createRemotes()
 		breakerImpact.Name = "BreakerImpact"
 		breakerImpact.Parent = folder
 	end
-
 	self._reactionWindowRemote = reactionWindow
 	self._submitReactionRemote = submitReaction
 	self._submitGuardImpactRemote = submitGuardImpact
@@ -665,6 +674,23 @@ function RaceService:_prepareRace(eligiblePlayers)
 	self._raceId += 1
 	self._finishCount = 0
 	table.clear(self._racers)
+	self:_clearLavaWaves()
+	self._lavaEnabled = activeTrack.id == GameConfig.lavaWave.trackId
+		or activeTrack.model:GetAttribute("LavaWavesEnabled") == true
+	self._lavaGeometry = nil
+	if self._lavaEnabled then
+		self._lavaGeometry = LavaWaveMechanic.geometryForLanes(
+			activeTrack.lanes,
+			activeTrack.finish,
+			GameConfig.lavaWave.lateralPaddingStuds,
+			GameConfig.lavaWave.cleanupPaddingStuds
+		)
+		if not self._lavaGeometry then
+			warn("[BalapKarung] Geometri Lava wave tidak dapat dihitung")
+			self._lavaEnabled = false
+		end
+	end
+	Workspace:SetAttribute("LavaWaveActive", self._lavaEnabled)
 
 	local currentPlayers = {}
 	for _, player in eligiblePlayers do
@@ -755,12 +781,301 @@ function RaceService:_prepareRace(eligiblePlayers)
 			activeBreakerZone = nil,
 			breakerReactions = {},
 			pausedOnFireRemaining = 0,
+			lavaReaction = nil,
+			lavaThreat = nil,
 			validInputCount = 0,
 			raceId = self._raceId,
 		}
 	end
 
 	return next(self._racers) ~= nil
+end
+
+function RaceService:_clearLavaWaves()
+	for _, wave in self._lavaWaves do
+		if wave.instance and wave.instance.Parent then
+			wave.instance:Destroy()
+		end
+	end
+	table.clear(self._lavaWaves)
+	self._nextLavaWaveAt = 0
+	Workspace:SetAttribute("LavaWaveActive", false)
+end
+
+function RaceService:_setLavaWaveCFrame(wave, distance)
+	local geometry = self._lavaGeometry
+	if not geometry or not wave.instance or not wave.instance.Parent then
+		return
+	end
+	local position = geometry.origin
+		+ geometry.direction * distance
+		+ Vector3.yAxis * GameConfig.lavaWave.visualYOffsetStuds
+	local cframe = CFrame.lookAt(position, position + geometry.direction)
+	if wave.instance:IsA("Model") then
+		wave.instance:PivotTo(cframe)
+	elseif wave.instance:IsA("BasePart") then
+		wave.instance.CFrame = cframe
+	end
+end
+
+function RaceService:_createLavaWaveVisual(waveId, variant)
+	local activeTrack = self._activeTrack
+	if not activeTrack or not activeTrack.model.Parent then
+		return nil
+	end
+
+	local folder = activeTrack.model:FindFirstChild(GameConfig.lavaWave.runtimeFolderName)
+	if not folder then
+		folder = Instance.new("Folder")
+		folder.Name = GameConfig.lavaWave.runtimeFolderName
+		folder.Parent = activeTrack.model
+	end
+
+	local template = ReplicatedStorage:FindFirstChild(GameConfig.lavaWave.templateName)
+	local visual = nil
+	if template and (template:IsA("BasePart") or template:IsA("Model")) then
+		visual = template:Clone()
+	else
+		local part = Instance.new("Part")
+		part.Size = Vector3.new(
+			self._lavaGeometry.width,
+			GameConfig.lavaWave.visualHeightStuds,
+			GameConfig.lavaWave.visualDepthStuds
+		)
+		part.Material = Enum.Material.Neon
+		part.Color = variant.color
+		part.Transparency = 0.12
+		visual = part
+	end
+
+	visual.Name = `LavaWave{waveId}`
+	for _, descendant in visual:GetDescendants() do
+		if descendant:IsA("BasePart") then
+			descendant.Anchored = true
+			descendant.CanCollide = false
+			descendant.CanTouch = false
+			descendant.CanQuery = false
+			descendant.Color = variant.color
+		end
+	end
+	if visual:IsA("BasePart") then
+		visual.Anchored = true
+		visual.CanCollide = false
+		visual.CanTouch = false
+		visual.CanQuery = false
+		visual.Color = variant.color
+	end
+	visual:SetAttribute("BalapKarungLavaWave", true)
+	visual:SetAttribute("WaveVariant", variant.id)
+	visual.Parent = folder
+	return visual
+end
+
+function RaceService:_spawnSingleLavaWave(now, variant, initialDistance)
+	self._lavaWaveId += 1
+	local speed = GameConfig.lavaWave.speedStudsPerSecond * variant.speedMultiplier
+	local wave = {
+		id = self._lavaWaveId,
+		spawnedAt = now,
+		instance = self:_createLavaWaveVisual(self._lavaWaveId, variant),
+		racers = {},
+		variantId = variant.id,
+		speed = speed,
+		initialDistance = initialDistance,
+		reactionDuration = GameConfig.lavaWave.reactionDurationSeconds
+			* variant.reactionDurationMultiplier,
+		promptLeadSeconds = GameConfig.lavaWave.promptLeadSeconds
+			* variant.reactionDurationMultiplier,
+	}
+	if not wave.instance then
+		return
+	end
+	wave.instance:SetAttribute("WaveSpeed", speed)
+	self:_setLavaWaveCFrame(wave, initialDistance)
+	table.insert(self._lavaWaves, wave)
+end
+
+function RaceService:_spawnLavaWave(now)
+	local variant =
+		LavaWaveMechanic.variantForRoll(GameConfig.lavaWave.variants, self._lavaRandom:NextNumber())
+	local speed = GameConfig.lavaWave.speedStudsPerSecond * variant.speedMultiplier
+	for waveIndex = 1, variant.waveCount do
+		local gapSeconds = variant.waveGapSeconds or 0
+		local initialDistance = -(waveIndex - 1) * speed * gapSeconds
+		self:_spawnSingleLavaWave(now, variant, initialDistance)
+	end
+	self._nextLavaWaveAt = now
+		+ self._lavaRandom:NextNumber(
+			GameConfig.lavaWave.minimumIntervalSeconds,
+			GameConfig.lavaWave.maximumIntervalSeconds
+		)
+end
+
+function RaceService:_startLavaPrompt(racer, wave, waveState, now)
+	local normalEvent = racer.reaction
+	if normalEvent and not normalEvent.resolved then
+		normalEvent.lavaFused = true
+		normalEvent.waveState = waveState
+		normalEvent.waveId = wave.id
+		waveState.prompted = true
+		waveState.event = normalEvent
+		racer.lavaReaction = normalEvent
+		racer.lavaThreat = waveState
+		self._reactionWindowRemote:FireClient(racer.player, {
+			action = "morph",
+			id = normalEvent.id,
+			skillId = GameConfig.lavaWave.skillId,
+			obstacle = true,
+			waveVariant = wave.variantId,
+		})
+		return
+	end
+
+	self._eventId += 1
+	local event = {
+		id = self._eventId,
+		opensAt = now,
+		closesAt = now + wave.reactionDuration,
+		duration = wave.reactionDuration,
+		resolved = false,
+		waveState = waveState,
+		waveId = wave.id,
+	}
+	waveState.prompted = true
+	waveState.event = event
+	racer.lavaReaction = event
+	racer.lavaThreat = waveState
+
+	local random = Random.new(racer.player.UserId + wave.id * 3571)
+	self._reactionWindowRemote:FireClient(racer.player, {
+		action = "show",
+		id = event.id,
+		opensAt = event.opensAt,
+		duration = event.duration,
+		chainIndex = 1,
+		chainLength = 1,
+		skillId = GameConfig.lavaWave.skillId,
+		obstacle = true,
+		waveVariant = wave.variantId,
+		screenX = random:NextNumber(
+			GameConfig.reactionWindow.minimumScreenX,
+			GameConfig.reactionWindow.maximumScreenX
+		),
+		screenY = random:NextNumber(
+			GameConfig.reactionWindow.minimumScreenY,
+			GameConfig.reactionWindow.maximumScreenY
+		),
+	})
+end
+
+function RaceService:_resolveLavaImpact(racer, waveState)
+	if waveState.impacted then
+		return
+	end
+	waveState.impacted = true
+	if racer.lavaThreat == waveState then
+		racer.lavaThreat = nil
+	end
+	local event = waveState.event
+	if event and not event.resolved then
+		event.resolved = true
+		if racer.lavaReaction == event then
+			racer.lavaReaction = nil
+		end
+		if racer.reaction == event then
+			racer.reaction = nil
+		end
+		self._reactionWindowRemote:FireClient(racer.player, {
+			action = "remove",
+			id = event.id,
+		})
+	end
+	if waveState.success then
+		racer.player:SetAttribute(
+			"LavaWavesDodged",
+			(racer.player:GetAttribute("LavaWavesDodged") or 0) + 1
+		)
+	else
+		racer.player:SetAttribute(
+			"LavaWavesHit",
+			(racer.player:GetAttribute("LavaWavesHit") or 0) + 1
+		)
+		if not waveState.failureResolved then
+			racer.player:SetAttribute("LastLavaVerdict", "Miss")
+			self:_resolveReaction(racer, "Miss", nil)
+		end
+	end
+end
+
+function RaceService:_updateLavaWaves(now)
+	if not self._lavaEnabled or not self._lavaGeometry then
+		return
+	end
+	if self._nextLavaWaveAt > 0 and now >= self._nextLavaWaveAt then
+		self:_spawnLavaWave(now)
+	end
+
+	for index = #self._lavaWaves, 1, -1 do
+		local wave = self._lavaWaves[index]
+		local waveDistance = wave.initialDistance + (now - wave.spawnedAt) * wave.speed
+		self:_setLavaWaveCFrame(wave, waveDistance)
+
+		for _, racer in self._racers do
+			if racer.finished then
+				continue
+			end
+			local waveState = wave.racers[racer.player]
+			if not waveState then
+				waveState = {
+					prompted = false,
+					success = false,
+					impacted = false,
+					event = nil,
+				}
+				wave.racers[racer.player] = waveState
+			end
+
+			local racerDistance = (racer.root.Position - self._lavaGeometry.origin):Dot(
+				self._lavaGeometry.direction
+			)
+			if
+				not waveState.prompted
+				and not waveState.impacted
+				and racerDistance > waveDistance
+			then
+				local timeToImpact = LavaWaveMechanic.timeToImpact(
+					waveDistance,
+					racerDistance,
+					wave.speed,
+					racer.speed * racer.speedMultiplier
+				)
+				if timeToImpact <= wave.promptLeadSeconds then
+					self:_startLavaPrompt(racer, wave, waveState, now)
+				end
+			end
+
+			local event = waveState.event
+			if event and not event.resolved and now >= event.closesAt then
+				event.resolved = true
+				if racer.lavaReaction == event then
+					racer.lavaReaction = nil
+				end
+			end
+			if
+				not waveState.impacted
+				and waveDistance >= racerDistance - GameConfig.lavaWave.impactToleranceStuds
+			then
+				self:_resolveLavaImpact(racer, waveState)
+			end
+		end
+
+		if waveDistance >= self._lavaGeometry.travelDistance then
+			if wave.instance and wave.instance.Parent then
+				wave.instance:Destroy()
+			end
+			table.remove(self._lavaWaves, index)
+		end
+	end
 end
 
 function RaceService:_returnPlayersToLobby()
@@ -1475,7 +1790,7 @@ function RaceService:_runReactionLoop(racer)
 	local random = Random.new(racer.player.UserId + self._raceId * 1000)
 
 	while self._state == "Racing" and not racer.finished and racer.raceId == self._raceId do
-		if racer.activeObstacle or racer.activeBreakerZone then
+		if racer.activeObstacle or racer.activeBreakerZone or racer.lavaThreat then
 			task.wait(0.05)
 			continue
 		end
@@ -1490,7 +1805,7 @@ function RaceService:_runReactionLoop(racer)
 		if self._state ~= "Racing" or racer.finished or racer.raceId ~= self._raceId then
 			break
 		end
-		if racer.activeObstacle or racer.activeBreakerZone then
+		if racer.activeObstacle or racer.activeBreakerZone or racer.lavaThreat then
 			continue
 		end
 
@@ -1508,6 +1823,7 @@ function RaceService:_runReactionLoop(racer)
 				or racer.raceId ~= self._raceId
 				or racer.activeObstacle
 				or racer.activeBreakerZone
+				or racer.lavaThreat
 			then
 				break
 			end
@@ -1568,11 +1884,18 @@ function RaceService:_runReactionLoop(racer)
 			if not event.resolved then
 				event.resolved = true
 				racer.reaction = nil
+				if event.lavaFused and event.waveState then
+					event.waveState.failureResolved = true
+					if racer.lavaReaction == event then
+						racer.lavaReaction = nil
+					end
+					racer.player:SetAttribute("LastLavaVerdict", "Miss")
+				end
 				self:_resolveReaction(racer, "Miss", event.id)
 				break
 			end
 
-			if racer.activeObstacle or racer.activeBreakerZone then
+			if racer.activeObstacle or racer.activeBreakerZone or racer.lavaThreat then
 				break
 			elseif chainIndex < chainLength then
 				task.wait(Speed.tempoForProgress(racer.noMissStreak).chainGapSeconds)
@@ -1595,6 +1918,36 @@ function RaceService:_submitReaction(player, eventId, clientPressedAt)
 		math.abs(serverNow - clientPressedAt)
 		> GameConfig.reactionWindow.maximumClockDifferenceSeconds
 	then
+		return
+	end
+
+	local lavaEvent = racer.lavaReaction
+	if lavaEvent and not lavaEvent.resolved and lavaEvent.id == eventId then
+		local reactionSeconds = clientPressedAt - lavaEvent.opensAt
+		local verdict = Reaction.verdictFor(reactionSeconds, lavaEvent.duration)
+		if verdict then
+			lavaEvent.resolved = true
+			racer.lavaReaction = nil
+			racer.validInputCount += 1
+			racer.player:SetAttribute("RaceValidInputs", racer.validInputCount)
+			lavaEvent.waveState.success = verdict == "Good" or verdict == "Perfect"
+			racer.player:SetAttribute("LastLavaVerdict", verdict)
+			if lavaEvent.lavaFused then
+				if racer.reaction == lavaEvent then
+					racer.reaction = nil
+				end
+				if not lavaEvent.waveState.success then
+					lavaEvent.waveState.failureResolved = true
+				end
+				self:_resolveReaction(racer, verdict, lavaEvent.id)
+			else
+				self._reactionWindowRemote:FireClient(racer.player, {
+					action = "result",
+					id = lavaEvent.id,
+					verdict = verdict,
+				})
+			end
+		end
 		return
 	end
 
@@ -1647,6 +2000,8 @@ function RaceService:_finishRacer(racer)
 
 	racer.finished = true
 	racer.reaction = nil
+	racer.lavaReaction = nil
+	racer.lavaThreat = nil
 	table.clear(racer.obstacleReactions)
 	racer.obstacleSequence = nil
 	racer.activeObstacle = nil
@@ -1840,6 +2195,9 @@ function RaceService:_runRace(eligiblePlayers)
 
 	self:_setState("Racing")
 	self._raceStartedAt = Workspace:GetServerTimeNow()
+	if self._lavaEnabled then
+		self._nextLavaWaveAt = self._raceStartedAt + GameConfig.lavaWave.firstWaveDelaySeconds
+	end
 	for _, racer in self._racers do
 		racer.root.Anchored = false
 		racer.player:SetAttribute("RaceStatus", "Racing")
@@ -1851,6 +2209,7 @@ function RaceService:_runRace(eligiblePlayers)
 	while self:_hasActiveRacers() do
 		task.wait(0.1)
 	end
+	self:_clearLavaWaves()
 
 	local participants = {}
 	for player, racer in self._racers do
@@ -1954,6 +2313,7 @@ function RaceService:Start()
 	RunService.Heartbeat:Connect(function()
 		if self._state == "Racing" then
 			self:_updateRacers()
+			self:_updateLavaWaves(Workspace:GetServerTimeNow())
 		end
 	end)
 

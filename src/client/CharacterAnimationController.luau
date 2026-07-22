@@ -159,7 +159,10 @@ function CharacterAnimationController.Start()
 			end
 
 			local isRecovering = player:GetAttribute("IsRecovering")
-			local shouldWalk = raceStatus == "Racing" and not isRecovering
+			local humanoidState = humanoid:GetState()
+			local isAirborne = humanoidState == Enum.HumanoidStateType.Jumping
+				or humanoidState == Enum.HumanoidStateType.Freefall
+			local shouldWalk = raceStatus == "Racing" and not isRecovering and not isAirborne
 
 			if isRecovering then
 				if idleTrack and idleTrack.IsPlaying then
@@ -219,6 +222,7 @@ function CharacterAnimationController.Start()
 			characterConnections,
 			player:GetAttributeChangedSignal("EffectiveSpeed"):Connect(updateTrack)
 		)
+		table.insert(characterConnections, humanoid.StateChanged:Connect(updateTrack))
 		table.insert(characterConnections, humanoid.Died:Connect(clearCharacter))
 		updateTrack()
 	end

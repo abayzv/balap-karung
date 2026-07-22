@@ -345,7 +345,14 @@ function LeaderboardService:_syncPlayer(player, force)
 				value = math.max(0, math.floor(value))
 				if force or self._lastWritten[player][boardState.storeKey] ~= value then
 					local success, message = pcall(function()
-						self:_getStore(boardState.storeKey):SetAsync(tostring(player.UserId), value)
+						local store = self:_getStore(boardState.storeKey)
+						if boardState.field == "BestWinStreak" then
+							store:UpdateAsync(tostring(player.UserId), function(previousValue)
+								return math.max(tonumber(previousValue) or 0, value)
+							end)
+						else
+							store:SetAsync(tostring(player.UserId), value)
+						end
 					end)
 					if success then
 						self._lastWritten[player][boardState.storeKey] = value
@@ -415,8 +422,10 @@ function LeaderboardService:_getEntries(boardState)
 	local values = self:_readPersistent(boardState)
 	for _, player in Players:GetPlayers() do
 		local value = self:_getPlayerValue(player, boardState.field, boardState.source)
-		if value and value >= GameConfig.leaderboard.minimumValue then
-			values[player.UserId] = math.floor(value)
+		local mergedValue =
+			LeaderboardFormat.mergePlayerValue(boardState.field, values[player.UserId], value)
+		if mergedValue and mergedValue >= GameConfig.leaderboard.minimumValue then
+			values[player.UserId] = mergedValue
 		else
 			values[player.UserId] = nil
 		end

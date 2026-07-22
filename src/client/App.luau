@@ -156,6 +156,7 @@ local function App(props)
 	local feedback, setFeedback = React.useState(nil)
 	local reactionTokens = React.useRef({})
 	local reactionPositions = React.useRef({})
+	local reactionMorphs = React.useRef({})
 	local feedbackToken = React.useRef(0)
 	local feedbackLabelRef = React.useRef(nil)
 
@@ -166,6 +167,7 @@ local function App(props)
 			nextReactions[id] = nil
 			reactionsRef.current = nextReactions
 		end
+		reactionMorphs.current[id] = nil
 		setReactions(function(current)
 			if not current[id] then
 				return current
@@ -181,6 +183,7 @@ local function App(props)
 			reactionTokens.current[id] = (reactionTokens.current[id] or 0) + 1
 		end
 		reactionsRef.current = {}
+		reactionMorphs.current = {}
 		setReactions({})
 	end
 
@@ -207,6 +210,7 @@ local function App(props)
 					if reactionTokens.current[id] ~= token then
 						return
 					end
+					local morph = reactionMorphs.current[id]
 					local reaction = {
 						id = id,
 						opensAt = payload.opensAt,
@@ -214,8 +218,12 @@ local function App(props)
 						expiresAt = payload.opensAt + payload.duration,
 						screenX = payload.screenX,
 						screenY = payload.screenY,
-						skillId = payload.skillId or GameConfig.reactionWindow.skillId,
-						obstacle = payload.obstacle == true,
+						skillId = if morph
+							then morph.skillId
+							else payload.skillId or GameConfig.reactionWindow.skillId,
+						obstacle = if morph
+							then morph.obstacle == true
+							else payload.obstacle == true,
 					}
 					local currentReactions = table.clone(reactionsRef.current)
 					currentReactions[id] = reaction
@@ -234,6 +242,21 @@ local function App(props)
 						end
 					)
 				end)
+			elseif payload.action == "morph" then
+				reactionMorphs.current[payload.id] = {
+					skillId = payload.skillId,
+					obstacle = payload.obstacle == true,
+				}
+				local currentReaction = reactionsRef.current[payload.id]
+				if currentReaction then
+					local morphedReaction = table.clone(currentReaction)
+					morphedReaction.skillId = payload.skillId
+					morphedReaction.obstacle = payload.obstacle == true
+					local nextReactions = table.clone(reactionsRef.current)
+					nextReactions[payload.id] = morphedReaction
+					reactionsRef.current = nextReactions
+					setReactions(nextReactions)
+				end
 			elseif payload.action == "remove" or payload.action == "obstacleVerdict" then
 				removeReaction(payload.id)
 			elseif payload.action == "result" then

@@ -4,8 +4,10 @@ local FIELD_ALIASES = {
 	win = "Win",
 	wins = "Win",
 	playtime = "Playtime",
-	winstreak = "WinStreak",
+	winstreak = "BestWinStreak",
 	bestwinstreak = "BestWinStreak",
+	currentwinstreak = "WinStreak",
+	activewinstreak = "WinStreak",
 	coins = "Coins",
 	coin = "Coins",
 }
@@ -31,6 +33,17 @@ function LeaderboardFormat.formatNumber(value)
 		formatted, replaced = formatted:gsub("^(%-?%d+)(%d%d%d)", "%1,%2")
 	until replaced == 0
 	return formatted
+end
+
+function LeaderboardFormat.mergePlayerValue(field, persistentValue, liveValue)
+	if liveValue == nil then
+		return persistentValue
+	end
+	local normalizedLive = math.max(0, math.floor(tonumber(liveValue) or 0))
+	if field == "BestWinStreak" then
+		return math.max(tonumber(persistentValue) or 0, normalizedLive)
+	end
+	return normalizedLive
 end
 
 function LeaderboardFormat.formatValue(dataKey, value)
